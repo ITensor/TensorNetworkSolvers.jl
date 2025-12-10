@@ -5,6 +5,93 @@ export dmrg, dmrg_sweep
 import AlgorithmsInterface as AI
 
 #=
+    Sweep(regions::AbsractVector, region_kwargs::Function)
+    Sweep(regions::AbsractVector, region_kwargs::NamedTuple)
+
+The "algorithm" for performing a single sweep over a list of regions. It also
+stores a function that takes the problem, algorithm, and state (tensor network, current
+region, etc.) and returns keyword arguments for performing the region update on the
+current region. For simplicity, it also accepts a `NamedTuple` of keyword arguments
+which is converted into a function that always returns the same keyword arguments
+for an region.
+=#
+struct Sweep{Regions <: AbstractVector, RegionKwargs <: Function} <: AI.Algorithm
+    regions::Regions
+    region_kwargs::RegionKwargs
+end
+function Sweep(regions::AbstractVector, region_kwargs::NamedTuple)
+    function region_kwargs_fn(problem::AI.Problem, algorithm::AI.Algorithm, state::AI.State)
+        return region_kwargs
+    end
+    return Sweep(regions, region_kwargs_fn)
+end
+
+function AI.initialize_state!(
+        problem::AI.Problem, algorithm::Sweep, state::AI.State; kwargs...
+    )
+    # Defined as a no-op so it isn't called in `AI.solve!`.
+    return state
+end
+
+# TODO: Use a proper stopping criterion.
+function AI.is_finished!(
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
+    )
+    state.iteration == 0 && return false
+    return state.iteration >= length(algorithm.regions)
+end
+
+#=
+    Sweeping(sweeps::AbstractVector{<:Sweep})
+
+The sweeping algorithm, which just stores a list of sweeps defined above. 
+=#
+struct Sweeping{Sweeps <: AbstractVector{<:Sweep}} <: AI.Algorithm
+    sweeps::Sweeps
+end
+
+function AI.initialize_state!(
+        problem::AI.Problem, algorithm::Sweeping, state::AI.State; kwargs...
+    )
+    # Defined as a no-op so it isn't called in `AI.solve!`.
+    return state
+end
+
+#=
+    StateAndIteration(state, iteration::Int)
+
+The "state", which stores both the tensor network state (the `iterate`) and the current
+`iteration`, which is the integer corresponding to which region or sweep we are on
+(`which_region` or `which_sweep` in ITensorNetworks.jl). For `alg::Sweep`, the
+current region is `alg.regions[iteration]`, while for `alg::Sweeping`, the current sweep is
+`alg.sweeps[iteration]`.
+=#
+mutable struct StateAndIteration{Iterate} <: AI.State
+    iterate::Iterate
+    iteration::Int
+end
+
+function AI.step!(
+        problem::AI.Problem, algorithm::Sweeping, state::AI.State
+    )
+    # Perform the current sweep.
+    sweep = algorithm.sweeps[state.iteration]
+    x = state.iterate
+    region_state = StateAndIteration(x, 0)
+    AI.solve!(problem, sweep, region_state)
+    state.iterate = region_state.iterate
+    return state
+end
+
+# TODO: Use a proper stopping criterion.
+function AI.is_finished!(
+        problem::AI.Problem, algorithm::Sweeping, state::AI.State
+    )
+    state.iteration == 0 && return false
+    return state.iteration >= length(algorithm.sweeps)
+end
+
+#=
     EigenProblem(operator)
 
 Represents the problem we are trying to solve and minimal algorithm-independent
@@ -14,69 +101,8 @@ struct EigenProblem{Operator} <: AI.Problem
     operator::Operator
 end
 
-#=
-    StateAndIteration(state, iteration::Int)
-
-The "state", which stores both the tensor network state (the `iterate`) and the current
-`iteration`, which is the integer corresponding to which region or sweep we are on
-(`which_region` or `which_sweep` in ITensorNetworks.jl). For `alg::DMRGSweep`, the
-current region is `alg.regions[iteration]`, while for `alg::DMRG`, the current sweep is
-`alg.sweeps[iteration]`.
-=#
-mutable struct StateAndIteration{Iterate} <: AI.State
-    iterate::Iterate
-    iteration::Int
-end
-
-function AI.increment!(state::StateAndIteration)
-    state.iteration += 1
-    return state
-end
-
-
-#=
-    DMRGSweep(regions::AbsractVector, region_kwargs::Function)
-    DMRGSweep(regions::AbsractVector, region_kwargs::NamedTuple)
-
-The "algorithm" for performing a single DMRG sweep over a list of regions. It also
-store a function that takes the problem, algorithm, and state (tensor network, current
-region, etc.) and returns keyword arguments for performing the region update on the
-current region. For simplicity, it also accepts a `NamedTuple` of keyword arguments
-which is converted into a function that always returns the same keyword arguments
-for an region.
-=#
-struct DMRGSweep{Regions <: AbstractVector, RegionKwargs <: Function} <: AI.Algorithm
-    regions::Regions
-    region_kwargs::RegionKwargs
-end
-function DMRGSweep(regions::AbstractVector, region_kwargs::NamedTuple)
-    function region_kwargs_fn(problem::AI.Problem, algorithm::AI.Algorithm, state::AI.State)
-        return region_kwargs
-    end
-    return DMRGSweep(regions, region_kwargs_fn)
-end
-
-function AI.initialize_state(
-        problem::EigenProblem, algorithm::DMRGSweep; kwargs...
-    )
-
-    # Dummy empty initialization for demonstration purposes.
-    # In practice we might randomly initialize a tensor network
-    # using information from `problem.operator`.
-    x0 = []
-
-    return StateAndIteration(x0, 0)
-end
-
-function AI.initialize_state!(
-        problem::EigenProblem, algorithm::DMRGSweep, state::StateAndIteration; kwargs...
-    )
-    # Defined as a no-op so it isn't called in `AI.solve!`.
-    return state
-end
-
 function AI.step!(
-        problem::EigenProblem, algorithm::DMRGSweep, state::StateAndIteration
+        problem::EigenProblem, algorithm::Sweep, state::AI.State
     )
     operator = problem.operator
     x = state.iterate
@@ -103,66 +129,18 @@ function AI.step!(
     return state
 end
 
-function AI.is_finished!(
-        problem::EigenProblem, algorithm::DMRGSweep, state::StateAndIteration
-    )
-    state.iteration == 0 && return false
-    return state.iteration >= length(algorithm.regions)
-end
-
 function dmrg_sweep(operator, state; regions, region_kwargs)
     prob = EigenProblem(operator)
-    alg = DMRGSweep(regions, region_kwargs)
+    alg = Sweep(regions, region_kwargs)
     state′ = StateAndIteration(state, 0)
     AI.solve!(prob, alg, state′)
     return state′.iterate
 end
 
-#=
-    DMRG(sweeps::AbstractVector{<:DMRGSweep})
-
-The DMRG algorithm, which just stores a list of DMRG sweeps defined above. 
-=#
-struct DMRG{Sweeps <: AbstractVector{<:DMRGSweep}} <: AI.Algorithm
-    sweeps::Sweeps
-end
-
-function AI.initialize_state(
-        problem::EigenProblem, algorithm::DMRG; kwargs...
-    )
-    # TODO: Handle the case of zero sweeps.
-    return AI.initialize_state(problem, first(algorithm.sweeps); kwargs...)
-end
-function AI.initialize_state!(
-        problem::EigenProblem, algorithm::DMRG, state::StateAndIteration; kwargs...
-    )
-    # TODO: Handle the case of zero sweeps.
-    return AI.initialize_state!(problem, first(algorithm.sweeps), state; kwargs...)
-end
-
-function AI.step!(
-        problem::EigenProblem, algorithm::DMRG, state::StateAndIteration
-    )
-    # Perform the current DMRG sweep.
-    sweep = algorithm.sweeps[state.iteration]
-    x = state.iterate
-    region_state = StateAndIteration(x, 0)
-    AI.solve!(problem, sweep, region_state)
-    state.iterate = region_state.iterate
-    return state
-end
-
-function AI.is_finished!(
-        problem::EigenProblem, algorithm::DMRG, state::StateAndIteration
-    )
-    state.iteration == 0 && return false
-    return state.iteration >= length(algorithm.sweeps)
-end
-
 function dmrg(operator, state; nsweeps, regions, region_kwargs)
     prob = EigenProblem(operator)
-    sweeps = [DMRGSweep(regions, kws) for kws in region_kwargs]
-    alg = DMRG(sweeps)
+    sweeps = [Sweep(regions, kws) for kws in region_kwargs]
+    alg = Sweeping(sweeps)
     state′ = StateAndIteration(state, 0)
     AI.solve!(prob, alg, state′)
     return state′.iterate

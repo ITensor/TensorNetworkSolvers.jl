@@ -1,4 +1,4 @@
-import AlgorithmsInterface as AI
+import .AlgorithmsInterface as AI
 
 #=
     EigenProblem(operator)

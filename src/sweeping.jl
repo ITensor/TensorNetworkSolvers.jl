@@ -1,4 +1,4 @@
-import AlgorithmsInterface as AI
+import .AlgorithmsInterface as AI
 
 #=
     Sweep(regions::AbsractVector, region_kwargs::Function)
@@ -22,15 +22,8 @@ function Sweep(regions::AbstractVector, region_kwargs::NamedTuple)
     return Sweep(regions, region_kwargs_fn)
 end
 
-function AI.initialize_state!(
-        problem::AI.Problem, algorithm::Sweep, state::AI.State; kwargs...
-    )
-    # Defined as a no-op so it isn't called in `AI.solve!`.
-    return state
-end
-
 # TODO: Use a proper stopping criterion.
-function AI.is_finished!(
+function AI.is_finished(
         problem::AI.Problem, algorithm::Sweep, state::AI.State
     )
     state.iteration == 0 && return false
@@ -44,13 +37,6 @@ The sweeping algorithm, which just stores a list of sweeps defined above.
 =#
 struct Sweeping{Sweeps <: AbstractVector{<:Sweep}} <: AI.Algorithm
     sweeps::Sweeps
-end
-
-function AI.initialize_state!(
-        problem::AI.Problem, algorithm::Sweeping, state::AI.State; kwargs...
-    )
-    # Defined as a no-op so it isn't called in `AI.solve!`.
-    return state
 end
 
 #=
@@ -80,7 +66,7 @@ function AI.step!(
 end
 
 # TODO: Use a proper stopping criterion.
-function AI.is_finished!(
+function AI.is_finished(
         problem::AI.Problem, algorithm::Sweeping, state::AI.State
     )
     state.iteration == 0 && return false

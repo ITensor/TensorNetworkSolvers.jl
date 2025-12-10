@@ -6,12 +6,12 @@ import .AlgorithmsInterface as AI
 Represents the problem we are trying to solve and minimal algorithm-independent
 information, so for an eigenproblem it is the operator we want the eigenvector of.
 =#
-struct EigenProblem{Operator} <: AI.Problem
+struct EigenProblem{Operator} <: AI.AbstractProblem
     operator::Operator
 end
 
 function update!(
-        problem::EigenProblem, algorithm::Sweep, state::AI.State
+        problem::EigenProblem, algorithm::Sweep, state::AI.AbstractState
     )
     operator = problem.operator
     x = state.iterate
@@ -50,7 +50,7 @@ function dmrg(operator, state; nsweeps, regions, region_kwargs)
     prob = EigenProblem(operator)
     sweeps = [Sweep(regions, kws) for kws in region_kwargs]
     alg = Sweeping(sweeps)
-    state′ = StateAndIteration(state, 0)
+    state′ = AI.State(state, 0)
     AI.solve!(prob, alg, state′)
     return state′.iterate
 end

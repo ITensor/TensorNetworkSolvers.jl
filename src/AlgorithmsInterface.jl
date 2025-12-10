@@ -11,6 +11,20 @@ function increment!(state::AbstractState)
     return state
 end
 
+#=
+    State(state, iteration::Int)
+
+The "state", which stores both the tensor network state (the `iterate`) and the current
+`iteration`, which is the integer corresponding to which region or sweep we are on
+(`which_region` or `which_sweep` in ITensorNetworks.jl). For `alg::Sweep`, the
+current region is `alg.regions[iteration]`, while for `alg::Sweeping`, the current sweep is
+`alg.sweeps[iteration]`.
+=#
+mutable struct State{Iterate} <: AbstractState
+    iterate::Iterate
+    iteration::Int
+end
+
 function solve!(
         problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
     )
@@ -37,20 +51,6 @@ function Base.iterate(itr::AbstractAlgorithmIterator, init = nothing)
     increment!(itr.state)
     step!(itr.problem, itr.algorithm, itr.state)
     return itr.state, nothing
-end
-
-#=
-    State(state, iteration::Int)
-
-The "state", which stores both the tensor network state (the `iterate`) and the current
-`iteration`, which is the integer corresponding to which region or sweep we are on
-(`which_region` or `which_sweep` in ITensorNetworks.jl). For `alg::Sweep`, the
-current region is `alg.regions[iteration]`, while for `alg::Sweeping`, the current sweep is
-`alg.sweeps[iteration]`.
-=#
-mutable struct State{Iterate} <: AbstractState
-    iterate::Iterate
-    iteration::Int
 end
 
 struct AlgorithmIterator{Problem, Algorithm, State} <: AbstractAlgorithmIterator

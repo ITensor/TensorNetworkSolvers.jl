@@ -1,8 +1,8 @@
 import .AlgorithmsInterface as AI
 
 #=
-    Sweep(regions::AbsractVector, region_kwargs::Function)
-    Sweep(regions::AbsractVector, region_kwargs::NamedTuple)
+    Sweep(regions::AbsractVector, region_kwargs::Function, iteration::Int = 0)
+    Sweep(regions::AbsractVector, region_kwargs::NamedTuple, iteration::Int = 0)
 
 The "algorithm" for performing a single sweep over a list of regions. It also
 stores a function that takes the problem, algorithm, and state (tensor network, current
@@ -11,11 +11,12 @@ current region. For simplicity, it also accepts a `NamedTuple` of keyword argume
 which is converted into a function that always returns the same keyword arguments
 for an region.
 =#
-struct Sweep{Regions <: AbstractVector, RegionKwargs <: Function} <: AI.AbstractAlgorithm
+@kwdef struct Sweep{Regions <: AbstractVector, RegionKwargs <: Function} <: AI.AbstractAlgorithm
     regions::Regions
     region_kwargs::RegionKwargs
+    iteration::Int = 0
 end
-function Sweep(regions::AbstractVector, region_kwargs::NamedTuple)
+function Sweep(regions::AbstractVector, region_kwargs::NamedTuple, iteration::Int = 0)
     function region_kwargs_fn(
             problem::AI.AbstractProblem,
             algorithm::AI.AbstractAlgorithm,
@@ -23,7 +24,7 @@ function Sweep(regions::AbstractVector, region_kwargs::NamedTuple)
         )
         return region_kwargs
     end
-    return Sweep(regions, region_kwargs_fn)
+    return Sweep(regions, region_kwargs_fn, iteration)
 end
 
 maxiter(algorithm::Sweep) = length(algorithm.regions)

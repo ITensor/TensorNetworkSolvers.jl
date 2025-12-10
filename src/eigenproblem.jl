@@ -48,7 +48,7 @@ end
 
 function dmrg(operator, state; nsweeps, regions, region_kwargs)
     prob = EigenProblem(operator)
-    sweeps = [Sweep(regions, kws) for kws in region_kwargs]
+    sweeps = [Sweep(regions, region_kwargs[i], i) for i in 1:nsweeps]
     alg = Sweeping(sweeps)
     state′ = AI.State(state, 0)
     AI.solve!(prob, alg, state′)

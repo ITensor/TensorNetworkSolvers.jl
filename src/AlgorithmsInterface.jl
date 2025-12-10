@@ -58,7 +58,8 @@ function solve!(
 end
 
 function is_finished(
-    problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState)
+        problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
+    )
     return throw(MethodError(is_finished, (problem, algorithm, state)))
 end
 

@@ -1,0 +1,5 @@
+[deps]
+TensorNetworkSolvers = "62d5c68e-057c-4e85-9e57-968d0954630a"
+
+[compat]
+TensorNetworkSolvers = "0.1"

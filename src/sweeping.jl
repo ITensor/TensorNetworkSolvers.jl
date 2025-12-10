@@ -1,6 +1,20 @@
 import .AlgorithmsInterface as AI
 
 #=
+    StateAndIteration(state, iteration::Int)
+
+The "state", which stores both the tensor network state (the `iterate`) and the current
+`iteration`, which is the integer corresponding to which region or sweep we are on
+(`which_region` or `which_sweep` in ITensorNetworks.jl). For `alg::Sweep`, the
+current region is `alg.regions[iteration]`, while for `alg::Sweeping`, the current sweep is
+`alg.sweeps[iteration]`.
+=#
+mutable struct StateAndIteration{Iterate} <: AI.State
+    iterate::Iterate
+    iteration::Int
+end
+
+#=
     Sweep(regions::AbsractVector, region_kwargs::Function)
     Sweep(regions::AbsractVector, region_kwargs::NamedTuple)
 
@@ -22,6 +36,34 @@ function Sweep(regions::AbstractVector, region_kwargs::NamedTuple)
     return Sweep(regions, region_kwargs_fn)
 end
 
+function AI.step!(
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
+    )
+    extract!(problem, algorithm, state)
+    update!(problem, algorithm, state)
+    insert!(problem, algorithm, state)
+    return state
+end
+
+function extract!(
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
+    )
+    # Extraction step goes here.
+    return state
+end
+function update!(
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
+    )
+    # Update step goes here.
+    return state
+end
+function insert!(
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
+    )
+    # Insert step goes here.
+    return state
+end
+
 # TODO: Use a proper stopping criterion.
 function AI.is_finished(
         problem::AI.Problem, algorithm::Sweep, state::AI.State
@@ -37,20 +79,6 @@ The sweeping algorithm, which just stores a list of sweeps defined above.
 =#
 struct Sweeping{Sweeps <: AbstractVector{<:Sweep}} <: AI.Algorithm
     sweeps::Sweeps
-end
-
-#=
-    StateAndIteration(state, iteration::Int)
-
-The "state", which stores both the tensor network state (the `iterate`) and the current
-`iteration`, which is the integer corresponding to which region or sweep we are on
-(`which_region` or `which_sweep` in ITensorNetworks.jl). For `alg::Sweep`, the
-current region is `alg.regions[iteration]`, while for `alg::Sweeping`, the current sweep is
-`alg.sweeps[iteration]`.
-=#
-mutable struct StateAndIteration{Iterate} <: AI.State
-    iterate::Iterate
-    iteration::Int
 end
 
 function AI.step!(

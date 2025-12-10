@@ -10,7 +10,7 @@ struct EigenProblem{Operator} <: AI.Problem
     operator::Operator
 end
 
-function AI.step!(
+function update!(
         problem::EigenProblem, algorithm::Sweep, state::AI.State
     )
     operator = problem.operator

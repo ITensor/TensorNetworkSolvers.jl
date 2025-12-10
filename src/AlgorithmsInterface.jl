@@ -6,7 +6,9 @@ abstract type AbstractAlgorithm end
 
 abstract type AbstractState end
 
-function increment!(state::AbstractState)
+function increment!(
+        problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
+    )
     state.iteration += 1
     return state
 end
@@ -20,9 +22,9 @@ The "state", which stores both the tensor network state (the `iterate`) and the 
 current region is `alg.regions[iteration]`, while for `alg::Sweeping`, the current sweep is
 `alg.sweeps[iteration]`.
 =#
-mutable struct State{Iterate} <: AbstractState
+mutable struct State{Iterate, Iteration} <: AbstractState
     iterate::Iterate
-    iteration::Int
+    iteration::Iteration
 end
 
 using Base.ScopedValues: ScopedValue, with
@@ -47,7 +49,7 @@ function solve!(
     callback(problem, algorithm, state, :Start)
     while !is_finished(problem, algorithm, state)
         callback(problem, algorithm, state, :PreStep)
-        increment!(state)
+        increment!(problem, algorithm, state)
         step!(problem, algorithm, state)
         callback(problem, algorithm, state, :PostStep)
     end
@@ -57,7 +59,7 @@ end
 
 function is_finished(
     problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState)
-    return throw(MethodError(is_finished!, (problem, algorithm, state)))
+    return throw(MethodError(is_finished, (problem, algorithm, state)))
 end
 
 function step!(problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState)
@@ -79,7 +81,7 @@ function callback(itr::AbstractAlgorithmIterator, event::Symbol)
     return callback(itr.problem, itr.algorithm, itr.state, event)
 end
 function increment!(itr::AbstractAlgorithmIterator)
-    return increment!(itr.state)
+    return increment!(itr.problem, itr.algorithm, itr.state)
 end
 function step!(itr::AbstractAlgorithmIterator)
     return step!(itr.problem, itr.algorithm, itr.state)

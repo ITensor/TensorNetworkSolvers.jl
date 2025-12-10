@@ -100,6 +100,11 @@ end
 struct ByRegion{Algorithm <: Sweeping} <: AI.AbstractAlgorithm
     algorithm::Algorithm
 end
+function AI.initialize_state(
+        problem::AI.AbstractProblem, algorithm::ByRegion, x
+    )
+    return AI.State(x, (; sweep = 1, region = 0))
+end
 function AI.is_finished(
         problem::AI.AbstractProblem, algorithm::ByRegion, state::AI.AbstractState
     )

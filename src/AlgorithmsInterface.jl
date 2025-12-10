@@ -27,6 +27,12 @@ mutable struct State{Iterate, Iteration} <: AbstractState
     iteration::Iteration
 end
 
+function initialize_state(
+        problem::AbstractProblem, algorithm::AbstractAlgorithm, x
+    )
+    return State(x, 0)
+end
+
 using Base.ScopedValues: ScopedValue, with
 const CALLBACKS = ScopedValue(Dict{Symbol, Any}())
 function callback(
@@ -73,6 +79,11 @@ struct AlgorithmIterator{Problem, Algorithm, State} <: AbstractAlgorithmIterator
     problem::Problem
     algorithm::Algorithm
     state::State
+end
+function iterator(
+        problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
+    )
+    return return AlgorithmIterator(problem, algorithm, state)
 end
 
 function is_finished(itr::AbstractAlgorithmIterator)

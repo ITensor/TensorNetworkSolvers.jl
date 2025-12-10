@@ -12,7 +12,8 @@ using Test: @test, @testset
         update = (; tol),
         insert = (; maxdim),
     )
-    x1 = dmrg_sweep(operator; regions, region_kwargs)
+    state = []
+    x1 = dmrg_sweep(operator, state; regions, region_kwargs)
     @test length(x1) == 3
 
     # Sweep-dependent region kwargs (uniform across regions).
@@ -27,7 +28,8 @@ using Test: @test, @testset
             insert = (; maxdim = maxdims[i]),
         )
     end
-    x2 = dmrg(operator; nsweeps, regions, region_kwargs)
+    state = []
+    x2 = dmrg(operator, state; nsweeps, regions, region_kwargs)
     @test length(x2) == 3 * 3
 
     # Region-dependent kwargs.
@@ -44,7 +46,8 @@ using Test: @test, @testset
             )
         end
     end
-    x3 = dmrg(operator; nsweeps, regions, region_kwargs)
+    state = []
+    x3 = dmrg(operator, state; nsweeps, regions, region_kwargs)
     @test length(x3) == 3 * 3
 
 end

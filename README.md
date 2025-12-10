@@ -54,7 +54,8 @@ region_kwargs = (;
     update = (; tol),
     insert = (; maxdim),
 )
-x1 = dmrg_sweep(operator; regions, region_kwargs)
+state = []
+x1 = dmrg_sweep(operator, state; regions, region_kwargs)
 ````
 
 Sweep-dependent region kwargs (uniform across regions).
@@ -73,7 +74,8 @@ region_kwargs = map(1:nsweeps) do i
         insert = (; maxdim = maxdims[i]),
     )
 end
-x2 = dmrg(operator; nsweeps, regions, region_kwargs)
+state = []
+x2 = dmrg(operator, state; nsweeps, regions, region_kwargs)
 ````
 
 Region-dependent kwargs.
@@ -94,7 +96,8 @@ region_kwargs = map(1:nsweeps) do i
         )
     end
 end
-x3 = dmrg(operator; nsweeps, regions, region_kwargs)
+state = []
+x3 = dmrg(operator, state; nsweeps, regions, region_kwargs)
 ````
 
 ---

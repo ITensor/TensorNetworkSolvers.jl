@@ -17,14 +17,14 @@ end
 #=
     StateAndIteration(state, iteration::Int)
 
-The "state", which stores both the tensor network state and the current iteration,
-which is the integer corresponding to which region or sweep we are on (`which_region`
-or `which_sweep` in ITensorNetworks.jl). For `alg::DMRGSweep`, the current region is
-`alg.regions[iteration]`, while for `alg::DMRG`, the current sweep is
+The "state", which stores both the tensor network state (the `iterate`) and the current
+`iteration`, which is the integer corresponding to which region or sweep we are on
+(`which_region` or `which_sweep` in ITensorNetworks.jl). For `alg::DMRGSweep`, the
+current region is `alg.regions[iteration]`, while for `alg::DMRG`, the current sweep is
 `alg.sweeps[iteration]`.
 =#
-mutable struct StateAndIteration{State} <: AI.State
-    state::State
+mutable struct StateAndIteration{Iterate} <: AI.State
+    iterate::Iterate
     iteration::Int
 end
 
@@ -71,9 +71,7 @@ end
 function AI.initialize_state!(
         problem::EigenProblem, algorithm::DMRGSweep, state::StateAndIteration; kwargs...
     )
-    # reset the state for the algorithm
-    state.state = []
-    state.iteration = 0
+    # Defined as a no-op so it isn't called in `AI.solve!`.
     return state
 end
 
@@ -81,7 +79,7 @@ function AI.step!(
         problem::EigenProblem, algorithm::DMRGSweep, state::StateAndIteration
     )
     operator = problem.operator
-    x = state.state
+    x = state.iterate
     region = algorithm.regions[state.iteration]
     region_kwargs = algorithm.region_kwargs(problem, algorithm, state)
 
@@ -100,7 +98,7 @@ function AI.step!(
     x′ = "region = $region" *
         ", update_kwargs = $(region_kwargs.update)" *
         ", insert_kwargs = $(region_kwargs.insert)"
-    state.state = [x; [x′]]
+    state.iterate = [x; [x′]]
 
     return state
 end
@@ -112,11 +110,12 @@ function AI.is_finished!(
     return state.iteration >= length(algorithm.regions)
 end
 
-function dmrg_sweep(operator; regions, region_kwargs)
+function dmrg_sweep(operator, state; regions, region_kwargs)
     prob = EigenProblem(operator)
     alg = DMRGSweep(regions, region_kwargs)
-    state = AI.solve(prob, alg)
-    return state.state
+    state′ = StateAndIteration(state, 0)
+    AI.solve!(prob, alg, state′)
+    return state′.iterate
 end
 
 #=
@@ -131,22 +130,14 @@ end
 function AI.initialize_state(
         problem::EigenProblem, algorithm::DMRG; kwargs...
     )
-
-    # Dummy empty initialization for demonstration purposes.
-    # In practice we might randomly initialize a tensor network
-    # using information from `problem.operator`.
-    x0 = []
-
-    return StateAndIteration(x0, 0)
+    # TODO: Handle the case of zero sweeps.
+    return AI.initialize_state(problem, first(algorithm.sweeps); kwargs...)
 end
-
 function AI.initialize_state!(
         problem::EigenProblem, algorithm::DMRG, state::StateAndIteration; kwargs...
     )
-    # reset the state for the algorithm
-    state.state = []
-    state.iteration = 0
-    return state
+    # TODO: Handle the case of zero sweeps.
+    return AI.initialize_state!(problem, first(algorithm.sweeps), state; kwargs...)
 end
 
 function AI.step!(
@@ -154,13 +145,10 @@ function AI.step!(
     )
     # Perform the current DMRG sweep.
     sweep = algorithm.sweeps[state.iteration]
-    x = state.state
+    x = state.iterate
     region_state = StateAndIteration(x, 0)
-    while !AI.is_finished!(problem, sweep, region_state)
-        AI.increment!(region_state)
-        AI.step!(problem, sweep, region_state)
-    end
-    state.state = region_state.state
+    AI.solve!(problem, sweep, region_state)
+    state.iterate = region_state.iterate
     return state
 end
 
@@ -171,12 +159,13 @@ function AI.is_finished!(
     return state.iteration >= length(algorithm.sweeps)
 end
 
-function dmrg(operator; nsweeps, regions, region_kwargs)
+function dmrg(operator, state; nsweeps, regions, region_kwargs)
     prob = EigenProblem(operator)
     sweeps = [DMRGSweep(regions, kws) for kws in region_kwargs]
     alg = DMRG(sweeps)
-    state = AI.solve(prob, alg)
-    return state.state
+    state′ = StateAndIteration(state, 0)
+    AI.solve!(prob, alg, state′)
+    return state′.iterate
 end
 
 end

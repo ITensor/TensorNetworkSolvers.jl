@@ -6,12 +6,12 @@ import .AlgorithmsInterface as AI
 Represents the problem we are trying to solve and minimal algorithm-independent
 information, so for an eigenproblem it is the operator we want the eigenvector of.
 =#
-struct EigenProblem{Operator} <: AI.AbstractProblem
+struct EigenProblem{Operator} <: AI.Problem
     operator::Operator
 end
 
 function update!(
-        problem::EigenProblem, algorithm::Sweep, state::AI.AbstractState
+        problem::EigenProblem, algorithm::Sweep, state::AI.State
     )
     operator = problem.operator
     x = state.iterate

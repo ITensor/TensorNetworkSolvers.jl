@@ -1,13 +1,13 @@
 module AlgorithmsInterface
 
-abstract type AbstractProblem end
+abstract type Problem end
 
-abstract type AbstractAlgorithm end
+abstract type Algorithm end
 
-abstract type AbstractState end
+abstract type State end
 
 function increment!(
-        problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
+        problem::Problem, algorithm::Algorithm, state::State
     )
     state.iteration += 1
     return state
@@ -22,23 +22,23 @@ The "state", which stores both the tensor network state (the `iterate`) and the 
 current region is `alg.regions[iteration]`, while for `alg::Sweeping`, the current sweep is
 `alg.sweeps[iteration]`.
 =#
-mutable struct State{Iterate, Iteration} <: AbstractState
+mutable struct DefaultState{Iterate, Iteration} <: State
     iterate::Iterate
     iteration::Iteration
 end
 
 function initialize_state(
-        problem::AbstractProblem, algorithm::AbstractAlgorithm, x
+        problem::Problem, algorithm::Algorithm, x
     )
-    return State(x, 0)
+    return DefaultState(x, 0)
 end
 
 using Base.ScopedValues: ScopedValue, with
 const CALLBACKS = ScopedValue(Dict{Symbol, Any}())
 function callback(
-        problem::AbstractProblem,
-        algorithm::AbstractAlgorithm,
-        state::AbstractState,
+        problem::Problem,
+        algorithm::Algorithm,
+        state::State,
         event::Symbol,
     )
     f = get(CALLBACKS[], event, Returns(nothing))
@@ -50,7 +50,7 @@ function with_callbacks(f, callbacks::Pair{Symbol}...)
 end
 
 function solve!(
-        problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
+        problem::Problem, algorithm::Algorithm, state::State
     )
     callback(problem, algorithm, state, :Start)
     while !is_finished(problem, algorithm, state)
@@ -64,42 +64,44 @@ function solve!(
 end
 
 function is_finished(
-        problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
+        problem::Problem, algorithm::Algorithm, state::State
     )
-    return throw(MethodError(is_finished, (problem, algorithm, state)))
+    return is_finished(
+        problem, algorithm, state, state.stopping_criterion, state.stopping_criterion_state
+    )
 end
 
-function step!(problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState)
+function step!(problem::Problem, algorithm::Algorithm, state::State)
     return throw(MethodError(step!, (problem, algorithm, state)))
 end
 
-abstract type AbstractAlgorithmIterator end
+abstract type AlgorithmIterator end
 
-struct AlgorithmIterator{Problem, Algorithm, State} <: AbstractAlgorithmIterator
+struct DefaultAlgorithmIterator{Problem, Algorithm, State} <: AlgorithmIterator
     problem::Problem
     algorithm::Algorithm
     state::State
 end
 function iterator(
-        problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
+        problem::Problem, algorithm::Algorithm, state::State
     )
-    return return AlgorithmIterator(problem, algorithm, state)
+    return DefaultAlgorithmIterator(problem, algorithm, state)
 end
 
-function is_finished(itr::AbstractAlgorithmIterator)
+function is_finished(itr::AlgorithmIterator)
     return is_finished(itr.problem, itr.algorithm, itr.state)
 end
-function callback(itr::AbstractAlgorithmIterator, event::Symbol)
+function callback(itr::AlgorithmIterator, event::Symbol)
     return callback(itr.problem, itr.algorithm, itr.state, event)
 end
-function increment!(itr::AbstractAlgorithmIterator)
+function increment!(itr::AlgorithmIterator)
     return increment!(itr.problem, itr.algorithm, itr.state)
 end
-function step!(itr::AbstractAlgorithmIterator)
+function step!(itr::AlgorithmIterator)
     return step!(itr.problem, itr.algorithm, itr.state)
 end
 
-function Base.iterate(itr::AbstractAlgorithmIterator, init = nothing)
+function Base.iterate(itr::AlgorithmIterator, init = nothing)
     is_finished(itr) && return nothing
     callback(itr, :PreStep)
     increment!(itr)
@@ -107,5 +109,8 @@ function Base.iterate(itr::AbstractAlgorithmIterator, init = nothing)
     callback(itr, :PostStep)
     return itr.state, nothing
 end
+
+abstract type StoppingCriterion end
+abstract type StoppingCriterionState end
 
 end

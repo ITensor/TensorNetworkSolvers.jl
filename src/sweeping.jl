@@ -11,16 +11,16 @@ current region. For simplicity, it also accepts a `NamedTuple` of keyword argume
 which is converted into a function that always returns the same keyword arguments
 for an region.
 =#
-@kwdef struct Sweep{Regions <: AbstractVector, RegionKwargs <: Function} <: AI.AbstractAlgorithm
+@kwdef struct Sweep{Regions <: Vector, RegionKwargs <: Function} <: AI.Algorithm
     regions::Regions
     region_kwargs::RegionKwargs
     iteration::Int = 0
 end
-function Sweep(regions::AbstractVector, region_kwargs::NamedTuple, iteration::Int = 0)
+function Sweep(regions::Vector, region_kwargs::NamedTuple, iteration::Int = 0)
     function region_kwargs_fn(
-            problem::AI.AbstractProblem,
-            algorithm::AI.AbstractAlgorithm,
-            state::AI.AbstractState,
+            problem::AI.Problem,
+            algorithm::AI.Algorithm,
+            state::AI.State,
         )
         return region_kwargs
     end
@@ -30,7 +30,7 @@ end
 maxiter(algorithm::Sweep) = length(algorithm.regions)
 
 function AI.step!(
-        problem::AI.AbstractProblem, algorithm::Sweep, state::AI.AbstractState
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
     )
     extract!(problem, algorithm, state)
     update!(problem, algorithm, state)
@@ -39,19 +39,19 @@ function AI.step!(
 end
 
 function extract!(
-        problem::AI.AbstractProblem, algorithm::Sweep, state::AI.AbstractState
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
     )
     # Extraction step goes here.
     return state
 end
 function update!(
-        problem::AI.AbstractProblem, algorithm::Sweep, state::AI.AbstractState
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
     )
     # Update step goes here.
     return state
 end
 function insert!(
-        problem::AI.AbstractProblem, algorithm::Sweep, state::AI.AbstractState
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
     )
     # Insert step goes here.
     return state
@@ -59,30 +59,30 @@ end
 
 # TODO: Use a proper stopping criterion.
 function AI.is_finished(
-        problem::AI.AbstractProblem, algorithm::Sweep, state::AI.AbstractState
+        problem::AI.Problem, algorithm::Sweep, state::AI.State
     )
     state.iteration == 0 && return false
     return state.iteration >= length(algorithm.regions)
 end
 
 #=
-    Sweeping(sweeps::AbstractVector{<:Sweep})
+    Sweeping(sweeps::Vector{<:Sweep})
 
 The sweeping algorithm, which just stores a list of sweeps defined above. 
 =#
-struct Sweeping{Sweeps <: AbstractVector{<:Sweep}} <: AI.AbstractAlgorithm
+struct Sweeping{Sweeps <: Vector{<:Sweep}} <: AI.Algorithm
     sweeps::Sweeps
 end
 
 maxiter(algorithm::Sweeping) = length(algorithm.sweeps)
 
 function AI.step!(
-        problem::AI.AbstractProblem, algorithm::Sweeping, state::AI.AbstractState
+        problem::AI.Problem, algorithm::Sweeping, state::AI.State
     )
     # Perform the current sweep.
     sweep = algorithm.sweeps[state.iteration]
     x = state.iterate
-    region_state = AI.State(x, 0)
+    region_state = AI.initialize_state(problem, sweep, x)
     AI.solve!(problem, sweep, region_state)
     state.iterate = region_state.iterate
     return state
@@ -90,23 +90,23 @@ end
 
 # TODO: Use a proper stopping criterion.
 function AI.is_finished(
-        problem::AI.AbstractProblem, algorithm::Sweeping, state::AI.AbstractState
+        problem::AI.Problem, algorithm::Sweeping, state::AI.State
     )
     state.iteration == 0 && return false
     return state.iteration >= length(algorithm.sweeps)
 end
 
 # Sweeping by region.
-struct ByRegion{Algorithm <: Sweeping} <: AI.AbstractAlgorithm
+struct ByRegion{Algorithm <: Sweeping} <: AI.Algorithm
     parent::Algorithm
 end
 function AI.initialize_state(
-        problem::AI.AbstractProblem, algorithm::ByRegion, x
+        problem::AI.Problem, algorithm::ByRegion, x
     )
     return AI.State(x, (; sweep = 1, region = 0))
 end
 function AI.is_finished(
-        problem::AI.AbstractProblem, algorithm::ByRegion, state::AI.AbstractState
+        problem::AI.Problem, algorithm::ByRegion, state::AI.State
     )
     sweep_iteration = state.iteration.sweep
     region_iteration = state.iteration.region
@@ -114,7 +114,7 @@ function AI.is_finished(
         region_iteration ≥ maxiter(algorithm.parent.sweeps[sweep_iteration])
 end
 function AI.increment!(
-        problem::AI.AbstractProblem, algorithm::ByRegion, state::AI.AbstractState
+        problem::AI.Problem, algorithm::ByRegion, state::AI.State
     )
     sweep_iteration = state.iteration.sweep
     region_iteration = state.iteration.region
@@ -127,7 +127,7 @@ function AI.increment!(
     state.iteration = (; sweep = sweep_iteration, region = region_iteration)
     return state
 end
-function AI.step!(problem::AI.AbstractProblem, algorithm::ByRegion, state::AI.AbstractState)
+function AI.step!(problem::AI.Problem, algorithm::ByRegion, state::AI.State)
     sweep = algorithm.parent.sweeps[state.iteration.sweep]
     sweep_state = AI.State(state.iterate, state.iteration.region)
     AI.step!(problem, sweep, sweep_state)

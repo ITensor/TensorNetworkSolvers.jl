@@ -25,13 +25,33 @@ mutable struct State{Iterate} <: AbstractState
     iteration::Int
 end
 
+using Base.ScopedValues: ScopedValue, with
+const CALLBACKS = ScopedValue(Dict{Symbol, Any}())
+function callback(
+        problem::AbstractProblem,
+        algorithm::AbstractAlgorithm,
+        state::AbstractState,
+        event::Symbol,
+    )
+    f = get(CALLBACKS[], event, Returns(nothing))
+    f(problem, algorithm, state)
+    return nothing
+end
+function with_callbacks(f, callbacks::Pair{Symbol}...)
+    return with(f, CALLBACKS => Dict(callbacks...))
+end
+
 function solve!(
         problem::AbstractProblem, algorithm::AbstractAlgorithm, state::AbstractState
     )
+    callback(problem, algorithm, state, :Start)
     while !is_finished(problem, algorithm, state)
+        callback(problem, algorithm, state, :PreStep)
         increment!(state)
         step!(problem, algorithm, state)
+        callback(problem, algorithm, state, :PostStep)
     end
+    callback(problem, algorithm, state, :Stop)
     return state
 end
 
@@ -48,8 +68,10 @@ abstract type AbstractAlgorithmIterator end
 
 function Base.iterate(itr::AbstractAlgorithmIterator, init = nothing)
     is_finished(itr.problem, itr.algorithm, itr.state) && return nothing
+    callback(itr.problem, itr.algorithm, itr.state, :PreStep)
     increment!(itr.state)
     step!(itr.problem, itr.algorithm, itr.state)
+    callback(itr.problem, itr.algorithm, itr.state, :PostStep)
     return itr.state, nothing
 end
 

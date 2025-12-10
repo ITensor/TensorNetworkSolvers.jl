@@ -66,19 +66,32 @@ end
 
 abstract type AbstractAlgorithmIterator end
 
-function Base.iterate(itr::AbstractAlgorithmIterator, init = nothing)
-    is_finished(itr.problem, itr.algorithm, itr.state) && return nothing
-    callback(itr.problem, itr.algorithm, itr.state, :PreStep)
-    increment!(itr.state)
-    step!(itr.problem, itr.algorithm, itr.state)
-    callback(itr.problem, itr.algorithm, itr.state, :PostStep)
-    return itr.state, nothing
-end
-
 struct AlgorithmIterator{Problem, Algorithm, State} <: AbstractAlgorithmIterator
     problem::Problem
     algorithm::Algorithm
     state::State
+end
+
+function is_finished(itr::AbstractAlgorithmIterator)
+    return is_finished(itr.problem, itr.algorithm, itr.state)
+end
+function callback(itr::AbstractAlgorithmIterator, event::Symbol)
+    return callback(itr.problem, itr.algorithm, itr.state, event)
+end
+function increment!(itr::AbstractAlgorithmIterator)
+    return increment!(itr.state)
+end
+function step!(itr::AbstractAlgorithmIterator)
+    return step!(itr.problem, itr.algorithm, itr.state)
+end
+
+function Base.iterate(itr::AbstractAlgorithmIterator, init = nothing)
+    is_finished(itr) && return nothing
+    callback(itr, :PreStep)
+    increment!(itr)
+    step!(itr)
+    callback(itr, :PostStep)
+    return itr.state, nothing
 end
 
 end

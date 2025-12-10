@@ -1,9 +1,14 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 TensorNetworkSolvers = "62d5c68e-057c-4e85-9e57-968d0954630a"
 
+[sources]
+TensorNetworkSolvers = {path = ".."}
+
 [compat]
 Documenter = "1"
+Graphs = "1"
 Literate = "2"
 TensorNetworkSolvers = "0.1"

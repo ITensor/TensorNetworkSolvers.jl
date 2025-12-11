@@ -6,7 +6,6 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 TensorNetworkSolvers = "62d5c68e-057c-4e85-9e57-968d0954630a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[sources.TensorNetworkSolvers]
 [sources]
 TensorNetworkSolvers = {path = ".."}
 

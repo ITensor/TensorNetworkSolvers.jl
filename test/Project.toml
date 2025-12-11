@@ -11,6 +11,7 @@ TensorNetworkSolvers = {path = ".."}
 
 [compat]
 Aqua = "0.8"
+Graphs = "1"
 SafeTestsets = "0.1"
 Suppressor = "0.2"
 TensorNetworkSolvers = "0.1"

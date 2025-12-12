@@ -1,4 +1,5 @@
-import .AlgorithmsInterface as AI
+import AlgorithmsInterface as AI
+import .AlgorithmsInterfaceExtensions as AIE
 
 #=
     Sweep(regions::AbsractVector, region_kwargs::Function, iteration::Int = 0)
@@ -11,20 +12,21 @@ current region. For simplicity, it also accepts a `NamedTuple` of keyword argume
 which is converted into a function that always returns the same keyword arguments
 for an region.
 =#
-@kwdef struct Sweep{Regions <: Vector, RegionKwargs <: Function} <: AI.Algorithm
+@kwdef struct Sweep{
+        Regions <: Vector, RegionKwargs <: Function, StoppingCriterion <: AI.StoppingCriterion,
+    } <: AIE.Algorithm
     regions::Regions
     region_kwargs::RegionKwargs
-    iteration::Int = 0
+    sweeping_iteration::Int = 0
+    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(regions))
 end
-function Sweep(regions::Vector, region_kwargs::NamedTuple, iteration::Int = 0)
-    function region_kwargs_fn(
-            problem::AI.Problem,
-            algorithm::AI.Algorithm,
-            state::AI.State,
-        )
-        return region_kwargs
-    end
-    return Sweep(regions, region_kwargs_fn, iteration)
+function Sweep(
+        regions::Vector,
+        region_kwargs::NamedTuple,
+        sweeping_iteration::Int,
+        stopping_criterion::AI.StoppingCriterion,
+    )
+    return Sweep(regions, Returns(region_kwargs), sweeping_iteration, stopping_criterion)
 end
 
 maxiter(algorithm::Sweep) = length(algorithm.regions)
@@ -70,8 +72,15 @@ end
 
 The sweeping algorithm, which just stores a list of sweeps defined above. 
 =#
-struct Sweeping{Sweeps <: Vector{<:Sweep}} <: AI.Algorithm
+@kwdef struct Sweeping{
+        Sweeps <: Vector{<:Sweep}, StoppingCriterion <: AI.StoppingCriterion,
+    } <: AIE.Algorithm
     sweeps::Sweeps
+    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(sweeps))
+end
+function Sweeping(f::Function, nsweeps::Int; kwargs...)
+    sweeps = f.(1:nsweeps)
+    return Sweeping(; sweeps, kwargs...)
 end
 
 maxiter(algorithm::Sweeping) = length(algorithm.sweeps)
@@ -80,11 +89,10 @@ function AI.step!(
         problem::AI.Problem, algorithm::Sweeping, state::AI.State
     )
     # Perform the current sweep.
-    sweep = algorithm.sweeps[state.iteration]
-    x = state.iterate
-    region_state = AI.initialize_state(problem, sweep, x)
-    AI.solve!(problem, sweep, region_state)
-    state.iterate = region_state.iterate
+    algorithm_sweep = algorithm.sweeps[state.iteration]
+    state_sweep = AI.initialize_state(problem, algorithm_sweep; iterate = state.iterate)
+    AI.solve!(problem, algorithm_sweep, state_sweep)
+    state.iterate = state_sweep.iterate
     return state
 end
 
@@ -97,14 +105,14 @@ function AI.is_finished(
 end
 
 # Sweeping by region.
-struct ByRegion{Algorithm <: Sweeping} <: AI.Algorithm
+struct ByRegion{Algorithm <: Sweeping} <: AIE.Algorithm
     parent::Algorithm
 end
-function AI.initialize_state(
-        problem::AI.Problem, algorithm::ByRegion, x
-    )
-    return AI.State(x, (; sweep = 1, region = 0))
-end
+## function AI.initialize_state(
+##         problem::AI.Problem, algorithm::ByRegion, x
+##     )
+##     return AI.State(x, (; sweep = 1, region = 0))
+## end
 function AI.is_finished(
         problem::AI.Problem, algorithm::ByRegion, state::AI.State
     )

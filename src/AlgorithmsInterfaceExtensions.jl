@@ -11,6 +11,9 @@ abstract type State <: AI.State end
 function AI.initialize_state!(
         problem::Problem, algorithm::Algorithm, state::State
     )
+    AI.initialize_state!(
+        problem, algorithm, algorithm.stopping_criterion, state.stopping_criterion_state
+    )
     return state
 end
 
@@ -24,7 +27,7 @@ end
     stopping_criterion_state::StoppingCriterionState
 end
 function AI.initialize_state(
-        problem::Problem, algorithm::Algorithm; kwargs...
+        problem::AI.Problem, algorithm::Algorithm; kwargs...
     )
     stopping_criterion_state = AI.initialize_state(
         problem, algorithm, algorithm.stopping_criterion
@@ -59,31 +62,10 @@ end
 function AI.step!(iterator::AlgorithmIterator)
     return AI.step!(iterator.problem, iterator.algorithm, iterator.state)
 end
-function AI.emit_message(iterator::AlgorithmIterator, event::Symbol)
-    return AI.emit_message(iterator.problem, iterator.algorithm, iterator.state, event)
-end
-function AI.emit_message(
-        logger::AI.AlgorithmLogger, iterator::AlgorithmIterator, event::Symbol
-    )
-    return AI.emit_message(
-        logger, iterator.problem, iterator.algorithm, iterator.state, event
-    )
-end
-function AI.emit_message(
-        logger::Nothing, iterator::AlgorithmIterator, event::Symbol
-    )
-    return AI.emit_message(
-        logger, iterator.problem, iterator.algorithm, iterator.state, event
-    )
-end
-
 function Base.iterate(iterator::AlgorithmIterator, init = nothing)
-    logger = AI.algorithm_logger()
     AI.is_finished!(iterator) && return nothing
-    AI.emit_message(logger, iterator, :PreStep)
     AI.increment!(iterator)
     AI.step!(iterator)
-    AI.emit_message(logger, iterator, :PostStep)
     return iterator.state, nothing
 end
 

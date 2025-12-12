@@ -84,6 +84,7 @@ function Sweeping(f::Function, nsweeps::Int; kwargs...)
 end
 
 maxiter(algorithm::Sweeping) = length(algorithm.sweeps)
+nregions(algorithm::Sweeping) = sum(maxiter, algorithm.sweeps)
 
 function AI.step!(
         problem::AI.Problem, algorithm::Sweeping, state::AI.State
@@ -105,40 +106,60 @@ function AI.is_finished(
 end
 
 # Sweeping by region.
-struct ByRegion{Algorithm <: Sweeping} <: AIE.Algorithm
-    parent::Algorithm
+@kwdef struct ByRegion{
+        ParentAlgorithm <: Sweeping, StoppingCriterion <: AI.StoppingCriterion,
+    } <: AIE.Algorithm
+    sweeping::ParentAlgorithm
+    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(nregions(sweeping))
 end
-## function AI.initialize_state(
-##         problem::AI.Problem, algorithm::ByRegion, x
+
+@kwdef mutable struct ByRegionState{
+        Iterate, StoppingCriterionState <: AI.StoppingCriterionState,
+    } <: AIE.State
+    iterate::Iterate
+    iteration::Int = 0
+    sweeping_iteration::Int = 1
+    sweep_iteration::Int = 0
+    stopping_criterion_state::StoppingCriterionState
+end
+function AI.initialize_state(
+        problem::AI.Problem, algorithm::ByRegion; kwargs...
+    )
+    stopping_criterion_state = AI.initialize_state(
+        problem, algorithm, algorithm.stopping_criterion
+    )
+    return ByRegionState(; stopping_criterion_state, kwargs...)
+end
+## function AI.is_finished(
+##         problem::AI.Problem, algorithm::ByRegion, state::AI.State
 ##     )
-##     return AI.State(x, (; sweep = 1, region = 0))
+##     sweep_iteration = state.iteration.sweep
+##     region_iteration = state.iteration.region
+##     return sweep_iteration ≥ maxiter(algorithm.parent) &&
+##         region_iteration ≥ maxiter(algorithm.parent.sweeps[sweep_iteration])
 ## end
-function AI.is_finished(
-        problem::AI.Problem, algorithm::ByRegion, state::AI.State
-    )
-    sweep_iteration = state.iteration.sweep
-    region_iteration = state.iteration.region
-    return sweep_iteration ≥ maxiter(algorithm.parent) &&
-        region_iteration ≥ maxiter(algorithm.parent.sweeps[sweep_iteration])
-end
 function AI.increment!(
-        problem::AI.Problem, algorithm::ByRegion, state::AI.State
+        problem::AI.Problem, algorithm::ByRegion, state::ByRegionState
     )
-    sweep_iteration = state.iteration.sweep
-    region_iteration = state.iteration.region
-    if region_iteration < maxiter(algorithm.parent.sweeps[sweep_iteration])
-        region_iteration += 1
+    # Increment the total iteration count.
+    state.iteration += 1
+    if state.sweep_iteration ≥ maxiter(algorithm.sweeping.sweeps[state.sweeping_iteration])
+        # We're on the last region of the sweep, so move to the next sweep.
+        state.sweeping_iteration += 1
+        state.sweep_iteration = 1
     else
-        sweep_iteration += 1
-        region_iteration = 1
+        # Move to the next region in the current sweep.
+        state.sweep_iteration += 1
     end
-    state.iteration = (; sweep = sweep_iteration, region = region_iteration)
     return state
 end
-function AI.step!(problem::AI.Problem, algorithm::ByRegion, state::AI.State)
-    sweep = algorithm.parent.sweeps[state.iteration.sweep]
-    sweep_state = AI.State(state.iterate, state.iteration.region)
-    AI.step!(problem, sweep, sweep_state)
-    state.iterate = sweep_state.iterate
+function AI.step!(problem::AI.Problem, algorithm::ByRegion, state::ByRegionState)
+    algorithm_sweep = algorithm.sweeping.sweeps[state.sweeping_iteration]
+    state_sweep = AI.initialize_state(
+        problem, algorithm_sweep;
+        iterate = state.iterate, sweeping_iteration = state.sweeping_iteration
+    )
+    AI.step!(problem, algorithm_sweep, state_sweep)
+    state.iterate = state_sweep.iterate
     return state
 end

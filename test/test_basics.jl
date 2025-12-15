@@ -1,6 +1,6 @@
 import AlgorithmsInterface as AI
 using Graphs: path_graph
-using TensorNetworkSolvers: ByRegion, EigenProblem, Sweeping, Sweep, dmrg, dmrg_sweep
+using TensorNetworkSolvers: EigenProblem, Sweep, dmrg, dmrg_sweep
 import TensorNetworkSolvers.AlgorithmsInterfaceExtensions as AIE
 using Test: @test, @testset
 
@@ -66,7 +66,7 @@ using Test: @test, @testset
         end
         x = []
         problem = EigenProblem(operator)
-        algorithm = Sweeping(nsweeps) do i
+        algorithm = AIE.NestedAlgorithm(nsweeps) do i
             Sweep(; regions, region_kwargs = region_kwargs[i])
         end
         state = AI.initialize_state(problem, algorithm; iterate = x)
@@ -78,7 +78,7 @@ using Test: @test, @testset
         @test iterations == 1:nsweeps
         @test length(state.iterate) == nsweeps * length(regions)
     end
-    @testset "ByRegion" begin
+    @testset "FlattenedAlgorithm" begin
         operator = path_graph(4)
         regions = [(1, 2), (2, 3), (3, 4)]
         nsweeps = 3
@@ -92,10 +92,10 @@ using Test: @test, @testset
         end
         x = []
         problem = EigenProblem(operator)
-        sweeping = Sweeping(nsweeps) do i
+        sweeping = AIE.NestedAlgorithm(nsweeps) do i
             Sweep(; regions, region_kwargs = region_kwargs[i])
         end
-        algorithm = ByRegion(; sweeping)
+        algorithm = AIE.FlattenedAlgorithm(; parent_algorithm = sweeping)
         state = AI.initialize_state(problem, algorithm; iterate = x)
         iterator = AIE.algorithm_iterator(problem, algorithm, state)
         iterations = Int[]
@@ -147,11 +147,11 @@ using Test: @test, @testset
             return nothing
         end
         x = AIE.with_algorithmlogger(
-            :EigenProblem_Sweeping_Start => print_dmrg_start,
-            :EigenProblem_Sweeping_PreStep => print_dmrg_prestep,
-            :EigenProblem_Sweeping_PostStep => print_dmrg_poststep,
-            :EigenProblem_Sweeping_Sweep_Start => print_sweep_start,
-            :EigenProblem_Sweeping_Sweep_PostStep => print_sweep_poststep,
+            :EigenProblem_NestedAlgorithm_Start => print_dmrg_start,
+            :EigenProblem_NestedAlgorithm_PreStep => print_dmrg_prestep,
+            :EigenProblem_NestedAlgorithm_PostStep => print_dmrg_poststep,
+            :EigenProblem_NestedAlgorithm_Sweep_Start => print_sweep_start,
+            :EigenProblem_NestedAlgorithm_Sweep_PostStep => print_sweep_poststep,
         ) do
             x = dmrg(operator, x0; nsweeps, regions, region_kwargs)
             return x

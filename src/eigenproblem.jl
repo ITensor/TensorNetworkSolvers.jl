@@ -1,6 +1,20 @@
 import AlgorithmsInterface as AI
 import .AlgorithmsInterfaceExtensions as AIE
 
+function dmrg_sweep(operator, state; regions, region_kwargs)
+    problem = EigenProblem(operator)
+    algorithm = Sweep(; regions, region_kwargs)
+    return AI.solve(problem, algorithm; iterate = state).iterate
+end
+
+function dmrg(operator, state; nsweeps, regions, region_kwargs, kwargs...)
+    problem = EigenProblem(operator)
+    algorithm = AIE.NestedAlgorithm(nsweeps) do i
+        return Sweep(; regions, region_kwargs = region_kwargs[i])
+    end
+    return AI.solve(problem, algorithm; iterate = state, kwargs...).iterate
+end
+
 #=
     EigenProblem(operator)
 
@@ -35,18 +49,4 @@ function update!(problem::EigenProblem, algorithm::Sweep, state::AI.State)
     state.iterate = [x; [x′]]
 
     return state
-end
-
-function dmrg_sweep(operator, state; regions, region_kwargs)
-    problem = EigenProblem(operator)
-    algorithm = Sweep(; regions, region_kwargs)
-    return AI.solve(problem, algorithm; iterate = state).iterate
-end
-
-function dmrg(operator, state; nsweeps, regions, region_kwargs, kwargs...)
-    problem = EigenProblem(operator)
-    algorithm = Sweeping(nsweeps) do i
-        return Sweep(; regions, region_kwargs = region_kwargs[i])
-    end
-    return AI.solve(problem, algorithm; iterate = state, kwargs...).iterate
 end

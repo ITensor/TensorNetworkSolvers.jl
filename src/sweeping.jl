@@ -17,22 +17,20 @@ for an region.
     } <: AIE.Algorithm
     regions::Regions
     region_kwargs::RegionKwargs
-    sweeping_iteration::Int = 0
     stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(regions))
 end
 function Sweep(
         regions::Vector,
         region_kwargs::NamedTuple,
-        sweeping_iteration::Int,
         stopping_criterion::AI.StoppingCriterion,
     )
-    return Sweep(regions, Returns(region_kwargs), sweeping_iteration, stopping_criterion)
+    return Sweep(regions, Returns(region_kwargs), stopping_criterion)
 end
 
 maxiter(algorithm::Sweep) = length(algorithm.regions)
 
 function AI.step!(
-        problem::AI.Problem, algorithm::Sweep, state::AI.State
+        problem::AI.Problem, algorithm::Sweep, state::AI.State; kwargs...
     )
     extract!(problem, algorithm, state)
     update!(problem, algorithm, state)
@@ -59,14 +57,6 @@ function insert!(
     return state
 end
 
-# TODO: Use a proper stopping criterion.
-function AI.is_finished(
-        problem::AI.Problem, algorithm::Sweep, state::AI.State
-    )
-    state.iteration == 0 && return false
-    return state.iteration >= length(algorithm.regions)
-end
-
 #=
     Sweeping(sweeps::Vector{<:Sweep})
 
@@ -79,20 +69,21 @@ The sweeping algorithm, which just stores a list of sweeps defined above.
     stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(sweeps))
 end
 function Sweeping(f::Function, nsweeps::Int; kwargs...)
-    sweeps = f.(1:nsweeps)
-    return Sweeping(; sweeps, kwargs...)
+    return Sweeping(; sweeps = f.(1:nsweeps), kwargs...)
 end
 
 maxiter(algorithm::Sweeping) = length(algorithm.sweeps)
 nregions(algorithm::Sweeping) = sum(maxiter, algorithm.sweeps)
 
 function AI.step!(
-        problem::AI.Problem, algorithm::Sweeping, state::AI.State
+        problem::AI.Problem, algorithm::Sweeping, state::AI.State;
+        logging_context_prefix = Symbol()
     )
     # Perform the current sweep.
     algorithm_sweep = algorithm.sweeps[state.iteration]
-    state_sweep = AI.initialize_state(problem, algorithm_sweep; iterate = state.iterate)
-    AI.solve!(problem, algorithm_sweep, state_sweep)
+    state_sweep = AI.initialize_state(problem, algorithm_sweep; state.iterate)
+    logging_context_prefix = Symbol(logging_context_prefix, :Sweep_)
+    AI.solve!(problem, algorithm_sweep, state_sweep; logging_context_prefix)
     state.iterate = state_sweep.iterate
     return state
 end
@@ -122,23 +113,16 @@ end
     sweep_iteration::Int = 0
     stopping_criterion_state::StoppingCriterionState
 end
+
 function AI.initialize_state(
-        problem::AI.Problem, algorithm::ByRegion; kwargs...
+        problem::AIE.Problem, algorithm::ByRegion; kwargs...
     )
     stopping_criterion_state = AI.initialize_state(
         problem, algorithm, algorithm.stopping_criterion
     )
     return ByRegionState(; stopping_criterion_state, kwargs...)
 end
-## function AI.is_finished(
-##         problem::AI.Problem, algorithm::ByRegion, state::AI.State
-##     )
-##     sweep_iteration = state.iteration.sweep
-##     region_iteration = state.iteration.region
-##     return sweep_iteration ≥ maxiter(algorithm.parent) &&
-##         region_iteration ≥ maxiter(algorithm.parent.sweeps[sweep_iteration])
-## end
-function AIE.increment!(problem::AI.Problem, algorithm::AI.Algorithm, state::ByRegionState)
+function AI.increment!(problem::AIE.Problem, algorithm::AIE.Algorithm, state::ByRegionState)
     # Increment the total iteration count.
     state.iteration += 1
     if state.sweep_iteration ≥ maxiter(algorithm.sweeping.sweeps[state.sweeping_iteration])
@@ -151,13 +135,16 @@ function AIE.increment!(problem::AI.Problem, algorithm::AI.Algorithm, state::ByR
     end
     return state
 end
-function AI.step!(problem::AI.Problem, algorithm::ByRegion, state::ByRegionState)
+function AI.step!(
+        problem::AI.Problem, algorithm::ByRegion, state::ByRegionState;
+        logging_context_prefix = Symbol()
+    )
     algorithm_sweep = algorithm.sweeping.sweeps[state.sweeping_iteration]
     state_sweep = AI.initialize_state(
         problem, algorithm_sweep;
-        iterate = state.iterate, iteration = state.sweep_iteration
+        state.iterate, iteration = state.sweep_iteration
     )
-    AI.step!(problem, algorithm_sweep, state_sweep)
+    AI.step!(problem, algorithm_sweep, state_sweep; logging_context_prefix)
     state.iterate = state_sweep.iterate
     return state
 end

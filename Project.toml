@@ -9,9 +9,6 @@ projects = ["benchmark", "dev", "docs", "examples", "test"]
 [deps]
 AlgorithmsInterface = "d1e3940c-cd12-4505-8585-b0a4b322527d"
 
-[sources]
-AlgorithmsInterface = {rev = "main", url = "https://github.com/JuliaManifolds/AlgorithmsInterface.jl.git"}
-
 [compat]
 AlgorithmsInterface = "0.1"
 julia = "1.10"

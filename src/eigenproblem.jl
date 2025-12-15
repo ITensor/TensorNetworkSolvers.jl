@@ -11,9 +11,7 @@ struct EigenProblem{Operator} <: AIE.Problem
     operator::Operator
 end
 
-function update!(
-        problem::EigenProblem, algorithm::Sweep, state::AI.State
-    )
+function update!(problem::EigenProblem, algorithm::Sweep, state::AI.State)
     operator = problem.operator
     x = state.iterate
     region = algorithm.regions[state.iteration]
@@ -45,10 +43,10 @@ function dmrg_sweep(operator, state; regions, region_kwargs)
     return AI.solve(problem, algorithm; iterate = state).iterate
 end
 
-function dmrg(operator, state; nsweeps, regions, region_kwargs)
+function dmrg(operator, state; nsweeps, regions, region_kwargs, kwargs...)
     problem = EigenProblem(operator)
     algorithm = Sweeping(nsweeps) do i
-        return Sweep(; regions, region_kwargs = region_kwargs[i], sweeping_iteration = i)
+        return Sweep(; regions, region_kwargs = region_kwargs[i])
     end
-    return AI.solve(problem, algorithm; iterate = state).iterate
+    return AI.solve(problem, algorithm; iterate = state, kwargs...).iterate
 end

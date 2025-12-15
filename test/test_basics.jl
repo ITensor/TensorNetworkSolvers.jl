@@ -105,4 +105,58 @@ using Test: @test, @testset
         @test iterations == 1:(nsweeps * length(regions))
         @test length(state.iterate) == nsweeps * length(regions)
     end
+    @testset "Logging" begin
+        operator = path_graph(4)
+        regions = [(1, 2), (2, 3), (3, 4)]
+        nsweeps = 3
+        tols = [1.0e-3, 1.0e-4, 1.0e-5]
+        maxdims = [20, 50, 100]
+        region_kwargs = map(1:nsweeps) do i
+            return (;
+                update = (; tol = tols[i]),
+                insert = (; maxdim = maxdims[i]),
+            )
+        end
+        x0 = []
+        ordinal_indicator(n::Integer) = n == 1 ? "ˢᵗ" : n == 2 ? "ⁿᵈ" : n == 3 ? "ʳᵈ" : "ᵗʰ"
+        ordinal_string(n::Integer) = "$n" * "$(ordinal_indicator(n))"
+        sweeping_iteration = Ref(0)
+        log = String[]
+        function print_dmrg_start(problem, algorithm, state)
+            push!(log, "Start: DMRG")
+            return nothing
+        end
+        function print_dmrg_prestep(problem, algorithm, state)
+            sweeping_iteration[] = state.iteration
+            return nothing
+        end
+        function print_dmrg_poststep(problem, algorithm, state)
+            push!(log, "PostStep: DMRG $(ordinal_string(state.iteration)) sweep")
+            return nothing
+        end
+        function print_sweep_start(problem, algorithm, state)
+            push!(log, "Start: DMRG $(ordinal_string(sweeping_iteration[])) sweep")
+            return nothing
+        end
+        function print_sweep_poststep(problem, algorithm, state)
+            push!(
+                log,
+                "PostStep: DMRG $(ordinal_string(sweeping_iteration[])) sweep" *
+                    ", $(ordinal_string(state.iteration)) region $(algorithm.regions[state.iteration])"
+            )
+            return nothing
+        end
+        x = AIE.with_algorithmlogger(
+            :EigenProblem_Sweeping_Start => print_dmrg_start,
+            :EigenProblem_Sweeping_PreStep => print_dmrg_prestep,
+            :EigenProblem_Sweeping_PostStep => print_dmrg_poststep,
+            :EigenProblem_Sweeping_Sweep_Start => print_sweep_start,
+            :EigenProblem_Sweeping_Sweep_PostStep => print_sweep_poststep,
+        ) do
+            x = dmrg(operator, x0; nsweeps, regions, region_kwargs)
+            return x
+        end
+        @test length(x) == nsweeps * length(regions)
+        @test length(log) == (nsweeps + 1) * (length(regions) + 1)
+    end
 end

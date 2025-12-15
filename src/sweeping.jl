@@ -138,9 +138,7 @@ end
 ##     return sweep_iteration ≥ maxiter(algorithm.parent) &&
 ##         region_iteration ≥ maxiter(algorithm.parent.sweeps[sweep_iteration])
 ## end
-function AI.increment!(
-        problem::AI.Problem, algorithm::ByRegion, state::ByRegionState
-    )
+function AIE.increment!(problem::AI.Problem, algorithm::AI.Algorithm, state::ByRegionState)
     # Increment the total iteration count.
     state.iteration += 1
     if state.sweep_iteration ≥ maxiter(algorithm.sweeping.sweeps[state.sweeping_iteration])
@@ -157,7 +155,7 @@ function AI.step!(problem::AI.Problem, algorithm::ByRegion, state::ByRegionState
     algorithm_sweep = algorithm.sweeping.sweeps[state.sweeping_iteration]
     state_sweep = AI.initialize_state(
         problem, algorithm_sweep;
-        iterate = state.iterate, sweeping_iteration = state.sweeping_iteration
+        iterate = state.iterate, iteration = state.sweep_iteration
     )
     AI.step!(problem, algorithm_sweep, state_sweep)
     state.iterate = state_sweep.iterate

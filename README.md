@@ -50,15 +50,12 @@ operator = path_graph(4)
 regions = [(1, 2), (2, 3), (3, 4)]
 tol = 1.0e-4
 maxdim = 50
-region_kwargs = (;
-    update = (; tol),
-    insert = (; maxdim),
-)
+region_kwargs = (; update = (; tol), insert = (; maxdim))
 state = []
 x1 = dmrg_sweep(operator, state; regions, region_kwargs)
 ````
 
-Sweep-dependent region kwargs (uniform across regions).
+Sweep-dependent region kwargs.
 
 ````julia
 using Graphs: path_graph
@@ -69,35 +66,10 @@ nsweeps = 3
 tols = [1.0e-3, 1.0e-4, 1.0e-5]
 maxdims = [20, 50, 100]
 region_kwargs = map(1:nsweeps) do i
-    return (;
-        update = (; tol = tols[i]),
-        insert = (; maxdim = maxdims[i]),
-    )
+    return (; update = (; tol = tols[i]), insert = (; maxdim = maxdims[i]))
 end
 state = []
 x2 = dmrg(operator, state; nsweeps, regions, region_kwargs)
-````
-
-Region-dependent kwargs.
-
-````julia
-using Graphs: path_graph
-using TensorNetworkSolvers: dmrg, dmrg_sweep
-operator = path_graph(4)
-regions = [(1, 2), (2, 3), (3, 4)]
-nsweeps = 3
-tols = [1.0e-3, 1.0e-4, 1.0e-5]
-maxdims = [20, 50, 100]
-region_kwargs = map(1:nsweeps) do i
-    return function (problem, alg, region_state)
-        return (;
-            update = (; tol = tols[i] / region_state.iteration),
-            insert = (; maxdim = maxdims[i] * region_state.iteration),
-        )
-    end
-end
-state = []
-x3 = dmrg(operator, state; nsweeps, regions, region_kwargs)
 ````
 
 ---

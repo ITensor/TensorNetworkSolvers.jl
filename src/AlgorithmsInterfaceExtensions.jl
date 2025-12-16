@@ -143,27 +143,12 @@ end
 
 #============================ NestedAlgorithm =============================================#
 
-#=
-    NestedAlgorithm(sweeps::AbstractVector{<:Algorithm})
+abstract type AbstractNestedAlgorithm <: Algorithm end
 
-An algorithm that consists of running an algorithm at each iteration
-from a list of stored algorithms.
-=#
-@kwdef struct NestedAlgorithm{
-        Algorithms <: AbstractVector{<:Algorithm},
-        StoppingCriterion <: AI.StoppingCriterion,
-    } <: Algorithm
-    algorithms::Algorithms
-    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(algorithms))
-end
-function NestedAlgorithm(f::Function, nalgorithms::Int; kwargs...)
-    return NestedAlgorithm(; algorithms = f.(1:nalgorithms), kwargs...)
-end
-
-max_iterations(algorithm::NestedAlgorithm) = length(algorithm.algorithms)
+max_iterations(algorithm::AbstractNestedAlgorithm) = length(algorithm.algorithms)
 
 function AI.step!(
-        problem::AI.Problem, algorithm::NestedAlgorithm, state::AI.State;
+        problem::AI.Problem, algorithm::AbstractNestedAlgorithm, state::AI.State;
         logging_context_prefix = Symbol()
     )
     # Perform the current sweep.
@@ -173,6 +158,23 @@ function AI.step!(
     AI.solve!(problem, sub_algorithm, sub_state; logging_context_prefix)
     state.iterate = sub_state.iterate
     return state
+end
+
+#=
+    NestedAlgorithm(sweeps::AbstractVector{<:Algorithm})
+
+An algorithm that consists of running an algorithm at each iteration
+from a list of stored algorithms.
+=#
+@kwdef struct NestedAlgorithm{
+        Algorithms <: AbstractVector{<:Algorithm},
+        StoppingCriterion <: AI.StoppingCriterion,
+    } <: AbstractNestedAlgorithm
+    algorithms::Algorithms
+    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(algorithms))
+end
+function NestedAlgorithm(f::Function, nalgorithms::Int; kwargs...)
+    return NestedAlgorithm(; algorithms = f.(1:nalgorithms), kwargs...)
 end
 
 #============================ FlattenedAlgorithm ==========================================#

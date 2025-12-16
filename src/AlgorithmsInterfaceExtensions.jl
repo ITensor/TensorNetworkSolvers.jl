@@ -178,15 +178,16 @@ end
 #============================ FlattenedAlgorithm ==========================================#
 
 # Flatten a nested algorithm.
-function default_flattened_stopping_criterion(algorithm::NestedAlgorithm)
-    return AI.StopAfterIteration(sum(max_iterations, algorithm.algorithms))
-end
 @kwdef struct FlattenedAlgorithm{
-        ParentAlgorithm <: AI.Algorithm, StoppingCriterion <: AI.StoppingCriterion,
+        Algorithms <: AbstractVector{<:Algorithm},
+        StoppingCriterion <: AI.StoppingCriterion,
     } <: Algorithm
-    parent_algorithm::ParentAlgorithm
+    algorithms::Algorithms
     stopping_criterion::StoppingCriterion =
-        default_flattened_stopping_criterion(parent_algorithm)
+        AI.StopAfterIteration(sum(max_iterations, algorithms))
+end
+function FlattenedAlgorithm(f::Function, nalgorithms::Int; kwargs...)
+    return FlattenedAlgorithm(; algorithms = f.(1:nalgorithms), kwargs...)
 end
 
 @kwdef mutable struct FlattenedAlgorithmState{
@@ -212,7 +213,7 @@ function AI.increment!(
     )
     # Increment the total iteration count.
     state.iteration += 1
-    if state.child_iteration ≥ max_iterations(algorithm.parent_algorithm.algorithms[state.parent_iteration])
+    if state.child_iteration ≥ max_iterations(algorithm.algorithms[state.parent_iteration])
         # We're on the last iteration of the child algorithm, so move to the next
         # child algorithm.
         state.parent_iteration += 1
@@ -227,7 +228,7 @@ function AI.step!(
         problem::AI.Problem, algorithm::FlattenedAlgorithm, state::FlattenedAlgorithmState;
         logging_context_prefix = Symbol()
     )
-    algorithm_sweep = algorithm.parent_algorithm.algorithms[state.parent_iteration]
+    algorithm_sweep = algorithm.algorithms[state.parent_iteration]
     state_sweep = AI.initialize_state(
         problem, algorithm_sweep;
         state.iterate, iteration = state.child_iteration

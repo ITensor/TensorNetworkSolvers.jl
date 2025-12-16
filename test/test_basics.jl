@@ -92,10 +92,9 @@ using Test: @test, @testset
         end
         x = []
         problem = EigenProblem(operator)
-        sweeping = AIE.NestedAlgorithm(nsweeps) do i
+        algorithm = AIE.FlattenedAlgorithm(nsweeps) do i
             Sweep(; regions, region_kwargs = region_kwargs[i])
         end
-        algorithm = AIE.FlattenedAlgorithm(; parent_algorithm = sweeping)
         state = AI.initialize_state(problem, algorithm; iterate = x)
         iterator = AIE.algorithm_iterator(problem, algorithm, state)
         iterations = Int[]

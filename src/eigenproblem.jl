@@ -9,7 +9,7 @@ end
 
 function dmrg(operator, state; nsweeps, regions, region_kwargs, kwargs...)
     problem = EigenProblem(operator)
-    algorithm = AIE.NestedAlgorithm(nsweeps) do i
+    algorithm = Sweeping(nsweeps) do i
         return Sweep(; regions, region_kwargs = region_kwargs[i])
     end
     return AI.solve(problem, algorithm; iterate = state, kwargs...).iterate
@@ -35,7 +35,7 @@ end
 function solve_region!!(problem::EigenProblem, algorithm::RegionAlgorithm, state)
     operator = problem.operator
     region = algorithm.region
-    region_kwargs = algorithm.region_kwargs(algorithm, state)
+    region_kwargs = algorithm.kwargs(algorithm, state)
 
     #=
     # Reduce the `operator` and state `x` onto the region `region`,

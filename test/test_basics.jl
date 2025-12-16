@@ -1,6 +1,6 @@
 import AlgorithmsInterface as AI
 using Graphs: path_graph
-using TensorNetworkSolvers: EigenProblem, Sweep, dmrg, dmrg_sweep
+using TensorNetworkSolvers: EigenProblem, Sweep, Sweeping, dmrg, dmrg_sweep
 import TensorNetworkSolvers.AlgorithmsInterfaceExtensions as AIE
 using Test: @test, @testset
 
@@ -66,7 +66,7 @@ using Test: @test, @testset
         end
         x = []
         problem = EigenProblem(operator)
-        algorithm = AIE.NestedAlgorithm(nsweeps) do i
+        algorithm = Sweeping(nsweeps) do i
             Sweep(; regions, region_kwargs = region_kwargs[i])
         end
         state = AI.initialize_state(problem, algorithm; iterate = x)
@@ -92,7 +92,7 @@ using Test: @test, @testset
         end
         x = []
         problem = EigenProblem(operator)
-        algorithm = AIE.FlattenedAlgorithm(nsweeps) do i
+        algorithm = AIE.flattened_algorithm(nsweeps) do i
             Sweep(; regions, region_kwargs = region_kwargs[i])
         end
         state = AI.initialize_state(problem, algorithm; iterate = x)
@@ -146,11 +146,11 @@ using Test: @test, @testset
             return nothing
         end
         x = AIE.with_algorithmlogger(
-            :EigenProblem_NestedAlgorithm_Start => print_dmrg_start,
-            :EigenProblem_NestedAlgorithm_PreStep => print_dmrg_prestep,
-            :EigenProblem_NestedAlgorithm_PostStep => print_dmrg_poststep,
-            :EigenProblem_NestedAlgorithm_Sweep_Start => print_sweep_start,
-            :EigenProblem_NestedAlgorithm_Sweep_PostStep => print_sweep_poststep,
+            :EigenProblem_Sweeping_Start => print_dmrg_start,
+            :EigenProblem_Sweeping_PreStep => print_dmrg_prestep,
+            :EigenProblem_Sweeping_PostStep => print_dmrg_poststep,
+            :EigenProblem_Sweeping_Sweep_Start => print_sweep_start,
+            :EigenProblem_Sweeping_Sweep_PostStep => print_sweep_poststep,
         ) do
             x = dmrg(operator, x0; nsweeps, regions, region_kwargs)
             return x

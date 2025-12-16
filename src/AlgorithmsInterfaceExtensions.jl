@@ -104,12 +104,6 @@ end
 
 abstract type AlgorithmIterator end
 
-struct DefaultAlgorithmIterator{Problem, Algorithm, State} <: AlgorithmIterator
-    problem::Problem
-    algorithm::Algorithm
-    state::State
-end
-
 function algorithm_iterator(
         problem::Problem, algorithm::Algorithm, state::State
     )
@@ -135,6 +129,12 @@ function Base.iterate(iterator::AlgorithmIterator, init = nothing)
     return iterator.state, nothing
 end
 
+struct DefaultAlgorithmIterator{Problem, Algorithm, State} <: AlgorithmIterator
+    problem::Problem
+    algorithm::Algorithm
+    state::State
+end
+
 #============================ with_algorithmlogger ========================================#
 
 # Allow passing functions, not just CallbackActions.
@@ -147,12 +147,16 @@ end
 
 #============================ NestedAlgorithm =============================================#
 
-abstract type AbstractNestedAlgorithm <: Algorithm end
+abstract type NestedAlgorithm <: Algorithm end
 
-max_iterations(algorithm::AbstractNestedAlgorithm) = length(algorithm.algorithms)
+function nested_algorithm(f::Function, nalgorithms::Int; kwargs...)
+    return DefaultNestedAlgorithm(f, nalgorithms; kwargs...)
+end
+
+max_iterations(algorithm::NestedAlgorithm) = length(algorithm.algorithms)
 
 function AI.step!(
-        problem::AI.Problem, algorithm::AbstractNestedAlgorithm, state::AI.State;
+        problem::AI.Problem, algorithm::NestedAlgorithm, state::AI.State;
         logging_context_prefix = Symbol()
     )
     # Perform the current sweep.
@@ -167,45 +171,30 @@ function AI.step!(
 end
 
 #=
-    NestedAlgorithm(sweeps::AbstractVector{<:Algorithm})
+    DefaultNestedAlgorithm(sweeps::AbstractVector{<:Algorithm})
 
 An algorithm that consists of running an algorithm at each iteration
 from a list of stored algorithms.
 =#
-@kwdef struct NestedAlgorithm{
+@kwdef struct DefaultNestedAlgorithm{
         Algorithms <: AbstractVector{<:Algorithm},
         StoppingCriterion <: AI.StoppingCriterion,
-    } <: AbstractNestedAlgorithm
+    } <: NestedAlgorithm
     algorithms::Algorithms
     stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(algorithms))
 end
-function NestedAlgorithm(f::Function, nalgorithms::Int; kwargs...)
-    return NestedAlgorithm(; algorithms = f.(1:nalgorithms), kwargs...)
+function DefaultNestedAlgorithm(f::Function, nalgorithms::Int; kwargs...)
+    return DefaultNestedAlgorithm(; algorithms = f.(1:nalgorithms), kwargs...)
 end
 
 #============================ FlattenedAlgorithm ==========================================#
 
 # Flatten a nested algorithm.
-@kwdef struct FlattenedAlgorithm{
-        Algorithms <: AbstractVector{<:Algorithm},
-        StoppingCriterion <: AI.StoppingCriterion,
-    } <: Algorithm
-    algorithms::Algorithms
-    stopping_criterion::StoppingCriterion =
-        AI.StopAfterIteration(sum(max_iterations, algorithms))
-end
-function FlattenedAlgorithm(f::Function, nalgorithms::Int; kwargs...)
-    return FlattenedAlgorithm(; algorithms = f.(1:nalgorithms), kwargs...)
-end
+abstract type FlattenedAlgorithm <: Algorithm end
+abstract type FlattenedAlgorithmState <: State end
 
-@kwdef mutable struct FlattenedAlgorithmState{
-        Iterate, StoppingCriterionState <: AI.StoppingCriterionState,
-    } <: State
-    iterate::Iterate
-    iteration::Int = 0
-    parent_iteration::Int = 1
-    child_iteration::Int = 0
-    stopping_criterion_state::StoppingCriterionState
+function flattened_algorithm(f::Function, nalgorithms::Int; kwargs...)
+    return DefaultFlattenedAlgorithm(f, nalgorithms; kwargs...)
 end
 
 function AI.initialize_state(
@@ -214,7 +203,7 @@ function AI.initialize_state(
     stopping_criterion_state = AI.initialize_state(
         problem, algorithm, algorithm.stopping_criterion
     )
-    return FlattenedAlgorithmState(; stopping_criterion_state, kwargs...)
+    return DefaultFlattenedAlgorithmState(; stopping_criterion_state, kwargs...)
 end
 function AI.increment!(
         problem::Problem, algorithm::Algorithm, state::FlattenedAlgorithmState
@@ -245,6 +234,28 @@ function AI.step!(
     AI.step!(problem, algorithm_sweep, state_sweep; logging_context_prefix)
     state.iterate = state_sweep.iterate
     return state
+end
+
+@kwdef struct DefaultFlattenedAlgorithm{
+        Algorithms <: AbstractVector{<:Algorithm},
+        StoppingCriterion <: AI.StoppingCriterion,
+    } <: FlattenedAlgorithm
+    algorithms::Algorithms
+    stopping_criterion::StoppingCriterion =
+        AI.StopAfterIteration(sum(max_iterations, algorithms))
+end
+function DefaultFlattenedAlgorithm(f::Function, nalgorithms::Int; kwargs...)
+    return DefaultFlattenedAlgorithm(; algorithms = f.(1:nalgorithms), kwargs...)
+end
+
+@kwdef mutable struct DefaultFlattenedAlgorithmState{
+        Iterate, StoppingCriterionState <: AI.StoppingCriterionState,
+    } <: FlattenedAlgorithmState
+    iterate::Iterate
+    iteration::Int = 0
+    parent_iteration::Int = 1
+    child_iteration::Int = 0
+    stopping_criterion_state::StoppingCriterionState
 end
 
 end

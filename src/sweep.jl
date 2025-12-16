@@ -1,12 +1,15 @@
 import AlgorithmsInterface as AI
 import .AlgorithmsInterfaceExtensions as AIE
 
-@kwdef struct RegionAlgorithm{Region, RegionKwargs <: Function} <: AIE.Algorithm
-    region::Region
-    region_kwargs::RegionKwargs
+@kwdef struct Sweeping{
+        Algorithms <: AbstractVector{<:AI.Algorithm},
+        StoppingCriterion <: AI.StoppingCriterion,
+    } <: AIE.NestedAlgorithm
+    algorithms::Algorithms
+    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(algorithms))
 end
-function RegionAlgorithm(region, region_kwargs::NamedTuple)
-    return RegionAlgorithm(region, Returns(region_kwargs))
+function Sweeping(f::Function, nalgorithms::Int; kwargs...)
+    return Sweeping(; algorithms = f.(1:nalgorithms), kwargs...)
 end
 
 #=
@@ -36,3 +39,11 @@ function Sweep(;
     return Sweep(algorithms, stopping_criterion)
 end
 AIE.max_iterations(algorithm::Sweep) = length(algorithm.algorithms)
+
+@kwdef struct RegionAlgorithm{Region, Kwargs <: Function}
+    region::Region
+    kwargs::Kwargs
+end
+function RegionAlgorithm(region, kwargs::NamedTuple)
+    return RegionAlgorithm(region, Returns(kwargs))
+end

@@ -1,6 +1,14 @@
 import AlgorithmsInterface as AI
 import .AlgorithmsInterfaceExtensions as AIE
 
+@kwdef struct RegionAlgorithm{Region, RegionKwargs <: Function} <: AIE.Algorithm
+    region::Region
+    region_kwargs::RegionKwargs
+end
+function RegionAlgorithm(region, region_kwargs::NamedTuple)
+    return RegionAlgorithm(region, Returns(region_kwargs))
+end
+
 #=
     Sweep(regions::AbsractVector, region_kwargs::Function, iteration::Int = 0)
     Sweep(regions::AbsractVector, region_kwargs::NamedTuple, iteration::Int = 0)
@@ -12,18 +20,19 @@ current region. For simplicity, it also accepts a `NamedTuple` of keyword argume
 which is converted into a function that always returns the same keyword arguments
 for an region.
 =#
-@kwdef struct Sweep{
-        Regions <: Vector, RegionKwargs <: Function, StoppingCriterion <: AI.StoppingCriterion,
+struct Sweep{
+        Algorithms <: AbstractVector, StoppingCriterion <: AI.StoppingCriterion,
     } <: AIE.Algorithm
-    regions::Regions
-    region_kwargs::RegionKwargs
-    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(regions))
+    algorithms::Algorithms
+    stopping_criterion::StoppingCriterion
 end
-function Sweep(
-        regions::Vector,
-        region_kwargs::NamedTuple,
-        stopping_criterion::AI.StoppingCriterion,
+function Sweep(;
+        regions::AbstractVector, region_kwargs,
+        stopping_criterion::AI.StoppingCriterion = AI.StopAfterIteration(length(regions)),
     )
-    return Sweep(regions, Returns(region_kwargs), stopping_criterion)
+    algorithms = map(regions) do region
+        return RegionAlgorithm(region, region_kwargs)
+    end
+    return Sweep(algorithms, stopping_criterion)
 end
-AIE.max_iterations(algorithm::Sweep) = length(algorithm.regions)
+AIE.max_iterations(algorithm::Sweep) = length(algorithm.algorithms)

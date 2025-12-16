@@ -25,12 +25,17 @@ struct EigenProblem{Operator} <: AIE.Problem
     operator::Operator
 end
 
-# extract!, update!, insert! for the region.
 function AI.step!(problem::EigenProblem, algorithm::Sweep, state::AI.State; kwargs...)
+    iterate = solve_region!!(problem, algorithm.algorithms[state.iteration], state.iterate)
+    state.iterate = iterate
+    return state
+end
+
+# extract!, update!, insert! for the region.
+function solve_region!!(problem::EigenProblem, algorithm::RegionAlgorithm, state)
     operator = problem.operator
-    x = state.iterate
-    region = algorithm.regions[state.iteration]
-    region_kwargs = algorithm.region_kwargs(problem, algorithm, state)
+    region = algorithm.region
+    region_kwargs = algorithm.region_kwargs(algorithm, state)
 
     #=
     # Reduce the `operator` and state `x` onto the region `region`,
@@ -44,10 +49,10 @@ function AI.step!(problem::EigenProblem, algorithm::Sweep, state::AI.State; kwar
     =#
 
     # Dummy update for demonstration purposes.
-    x′ = "region = $region" *
+    state′ = "region = $region" *
         ", update_kwargs = $(region_kwargs.update)" *
         ", insert_kwargs = $(region_kwargs.insert)"
-    state.iterate = [x; [x′]]
+    state = [state; [state′]]
 
     return state
 end

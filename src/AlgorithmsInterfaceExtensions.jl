@@ -51,8 +51,12 @@ end
 function basetypenameof(x)
     return Symbol(last(split(String(Symbol(Base.typename(typeof(x)).wrapper)), ".")))
 end
+default_logging_context_prefix(x) = Symbol(basetypenameof(x), :_)
 function default_logging_context_prefix(problem::Problem, algorithm::Algorithm)
-    return Symbol(basetypenameof(problem), :_, basetypenameof(algorithm), :_)
+    return Symbol(
+        default_logging_context_prefix(problem),
+        default_logging_context_prefix(algorithm),
+    )
 end
 function AI.solve!(
         problem::Problem, algorithm::Algorithm, state::State;
@@ -154,7 +158,9 @@ function AI.step!(
     # Perform the current sweep.
     sub_algorithm = algorithm.algorithms[state.iteration]
     sub_state = AI.initialize_state(problem, sub_algorithm; state.iterate)
-    logging_context_prefix = Symbol(logging_context_prefix, :Sweep_)
+    logging_context_prefix = Symbol(
+        logging_context_prefix, default_logging_context_prefix(sub_algorithm)
+    )
     AI.solve!(problem, sub_algorithm, sub_state; logging_context_prefix)
     state.iterate = sub_state.iterate
     return state

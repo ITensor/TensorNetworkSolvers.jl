@@ -41,10 +41,10 @@ using Test: @test, @testset
         tols = [1.0e-3, 1.0e-4, 1.0e-5]
         maxdims = [20, 50, 100]
         region_kwargs = map(1:nsweeps) do i
-            return function (problem, alg, region_state)
+            return function (algorithm, state)
                 return (;
-                    update = (; tol = tols[i] / region_state.iteration),
-                    insert = (; maxdim = maxdims[i] * region_state.iteration),
+                    update = (; tol = tols[i] / length(algorithm.region)),
+                    insert = (; maxdim = maxdims[i] * length(algorithm.region)),
                 )
             end
         end
@@ -141,7 +141,7 @@ using Test: @test, @testset
             push!(
                 log,
                 "PostStep: DMRG $(ordinal_string(sweeping_iteration[])) sweep" *
-                    ", $(ordinal_string(state.iteration)) region $(algorithm.regions[state.iteration])"
+                    ", $(ordinal_string(state.iteration)) region $(algorithm.algorithms[state.iteration].region)"
             )
             return nothing
         end

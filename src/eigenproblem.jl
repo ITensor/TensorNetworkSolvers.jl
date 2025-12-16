@@ -1,18 +1,51 @@
 import AlgorithmsInterface as AI
 import .AlgorithmsInterfaceExtensions as AIE
 
-function dmrg_sweep(operator, state; regions, region_kwargs)
-    problem = EigenProblem(operator)
-    algorithm = Sweep(; regions, region_kwargs)
-    return AI.solve(problem, algorithm; iterate = state).iterate
+maybe_fill(value, len::Int) = fill(value, len)
+function maybe_fill(v::AbstractVector, len::Int)
+    @assert length(v) == len
+    return v
 end
 
-function dmrg(operator, state; nsweeps, regions, region_kwargs, kwargs...)
-    problem = EigenProblem(operator)
-    algorithm = Sweeping(nsweeps) do i
-        return Sweep(; regions, region_kwargs = region_kwargs[i])
+function dmrg_sweep(operator, algorithm, state)
+    problem = select_problem(dmrg_sweep, operator, algorithm, state)
+    return AI.solve(problem, algorithm; iterate = state).iterate
+end
+function dmrg_sweep(operator, state; kwargs...)
+    algorithm = select_algorithm(dmrg_sweep, operator, state; kwargs...)
+    return dmrg_sweep(operator, algorithm, state)
+end
+
+function select_problem(::typeof(dmrg_sweep), operator, algorithm, state)
+    return EigenProblem(operator)
+end
+function select_algorithm(::typeof(dmrg_sweep), operator, state; regions, region_kwargs)
+    region_kwargs′ = maybe_fill(region_kwargs, length(regions))
+    return Sweep(length(regions)) do i
+        return Returns(Region(regions[i]; region_kwargs′[i]...))
     end
-    return AI.solve(problem, algorithm; iterate = state, kwargs...).iterate
+end
+
+function dmrg(operator, algorithm, state)
+    problem = select_problem(dmrg, operator, algorithm, state)
+    return AI.solve(problem, algorithm; iterate = state).iterate
+end
+function dmrg(operator, state; kwargs...)
+    algorithm = select_algorithm(dmrg, operator, state; kwargs...)
+    return dmrg(operator, algorithm, state)
+end
+
+function select_problem(::typeof(dmrg), operator, algorithm, state)
+    return EigenProblem(operator)
+end
+function select_algorithm(::typeof(dmrg), operator, state; nsweeps, regions, region_kwargs)
+    region_kwargs′ = maybe_fill(region_kwargs, nsweeps)
+    return Sweeping(nsweeps) do i
+        return select_algorithm(
+            dmrg_sweep, operator, state;
+            regions, region_kwargs = region_kwargs′[i],
+        )
+    end
 end
 
 #=
@@ -26,7 +59,9 @@ struct EigenProblem{Operator} <: AIE.Problem
 end
 
 function AI.step!(problem::EigenProblem, algorithm::Sweep, state::AI.State; kwargs...)
-    iterate = solve_region!!(problem, algorithm.algorithms[state.iteration], state.iterate)
+    iterate = solve_region!!(
+        problem, algorithm.region_algorithms[state.iteration](state.iterate), state.iterate
+    )
     state.iterate = iterate
     return state
 end
@@ -35,7 +70,7 @@ end
 function solve_region!!(problem::EigenProblem, algorithm::RegionAlgorithm, state)
     operator = problem.operator
     region = algorithm.region
-    region_kwargs = algorithm.kwargs(algorithm, state)
+    region_kwargs = algorithm.kwargs
 
     #=
     # Reduce the `operator` and state `x` onto the region `region`,

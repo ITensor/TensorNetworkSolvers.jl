@@ -23,27 +23,32 @@ current region. For simplicity, it also accepts a `NamedTuple` of keyword argume
 which is converted into a function that always returns the same keyword arguments
 for an region.
 =#
-struct Sweep{
-        Algorithms <: AbstractVector, StoppingCriterion <: AI.StoppingCriterion,
+@kwdef struct Sweep{
+        RegionAlgorithms <: AbstractVector, StoppingCriterion <: AI.StoppingCriterion,
     } <: AIE.Algorithm
-    algorithms::Algorithms
-    stopping_criterion::StoppingCriterion
+    region_algorithms::RegionAlgorithms
+    stopping_criterion::StoppingCriterion = AI.StopAfterIteration(length(region_algorithms))
 end
-function Sweep(;
-        regions::AbstractVector, region_kwargs,
-        stopping_criterion::AI.StoppingCriterion = AI.StopAfterIteration(length(regions)),
-    )
-    algorithms = map(regions) do region
-        return RegionAlgorithm(region, region_kwargs)
-    end
-    return Sweep(algorithms, stopping_criterion)
+function Sweep(f, nalgorithms::Int; kwargs...)
+    region_algorithms = to_region_algorithm.(f.(1:nalgorithms))
+    return Sweep(; region_algorithms, kwargs...)
 end
+to_region_algorithm(algorithm::Function) = algorithm
+to_region_algorithm(algorithm) = Returns(region_algorithm(algorithm))
+
 AIE.max_iterations(algorithm::Sweep) = length(algorithm.algorithms)
 
-@kwdef struct RegionAlgorithm{Region, Kwargs <: Function}
-    region::Region
+abstract type RegionAlgorithm end
+region_algorithm(algorithm::RegionAlgorithm) = algorithm
+region_algorithm(algorithm::NamedTuple) = Region(; algorithm...)
+
+struct Region{R, Kwargs <: NamedTuple} <: RegionAlgorithm
+    region::R
     kwargs::Kwargs
 end
-function RegionAlgorithm(region, kwargs::NamedTuple)
-    return RegionAlgorithm(region, Returns(kwargs))
+function Region(; region, kwargs...)
+    return Region(region, (; kwargs...))
+end
+function Region(region; kwargs...)
+    return Region(region, (; kwargs...))
 end

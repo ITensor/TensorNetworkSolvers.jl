@@ -213,6 +213,7 @@ function AI.increment!(
     )
     # Increment the total iteration count.
     state.iteration += 1
+    # TODO: Use `is_finished!` instead?
     if state.child_iteration ≥ max_iterations(algorithm.algorithms[state.parent_iteration])
         # We're on the last iteration of the child algorithm, so move to the next
         # child algorithm.

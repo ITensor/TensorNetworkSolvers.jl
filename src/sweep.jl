@@ -26,33 +26,4 @@ function Sweep(
     )
     return Sweep(regions, Returns(region_kwargs), stopping_criterion)
 end
-
 AIE.max_iterations(algorithm::Sweep) = length(algorithm.regions)
-
-function AI.step!(
-        problem::AI.Problem, algorithm::Sweep, state::AI.State; kwargs...
-    )
-    extract!(problem, algorithm, state)
-    update!(problem, algorithm, state)
-    insert!(problem, algorithm, state)
-    return state
-end
-
-function extract!(
-        problem::AI.Problem, algorithm::Sweep, state::AI.State
-    )
-    # Extraction step goes here.
-    return state
-end
-function update!(
-        problem::AI.Problem, algorithm::Sweep, state::AI.State
-    )
-    # Update step goes here.
-    return state
-end
-function insert!(
-        problem::AI.Problem, algorithm::Sweep, state::AI.State
-    )
-    # Insert step goes here.
-    return state
-end

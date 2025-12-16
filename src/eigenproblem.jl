@@ -25,7 +25,8 @@ struct EigenProblem{Operator} <: AIE.Problem
     operator::Operator
 end
 
-function update!(problem::EigenProblem, algorithm::Sweep, state::AI.State)
+# extract!, update!, insert! for the region.
+function AI.step!(problem::EigenProblem, algorithm::Sweep, state::AI.State; kwargs...)
     operator = problem.operator
     x = state.iterate
     region = algorithm.regions[state.iteration]

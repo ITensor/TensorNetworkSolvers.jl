@@ -155,18 +155,38 @@ end
 
 max_iterations(algorithm::NestedAlgorithm) = length(algorithm.algorithms)
 
+function get_subproblem(
+        problem::AI.Problem, algorithm::NestedAlgorithm, state::AI.State
+    )
+    subproblem = problem
+    subalgorithm = algorithm.algorithms[state.iteration]
+    substate = AI.initialize_state(subproblem, subalgorithm; state.iterate)
+    return subproblem, subalgorithm, substate
+end
+
+function set_substate!(
+        problem::AI.Problem, algorithm::NestedAlgorithm, state::AI.State, substate::AI.State
+    )
+    state.iterate = substate.iterate
+    return state
+end
+
 function AI.step!(
         problem::AI.Problem, algorithm::NestedAlgorithm, state::AI.State;
         logging_context_prefix = Symbol()
     )
-    # Perform the current sweep.
-    sub_algorithm = algorithm.algorithms[state.iteration]
-    sub_state = AI.initialize_state(problem, sub_algorithm; state.iterate)
+    # Get the subproblem, subalgorithm, and substate.
+    subproblem, subalgorithm, substate = get_subproblem(problem, algorithm, state)
+
+    # Solve the subproblem with the subalgorithm.
     logging_context_prefix = Symbol(
-        logging_context_prefix, default_logging_context_prefix(sub_algorithm)
+        logging_context_prefix, default_logging_context_prefix(subalgorithm)
     )
-    AI.solve!(problem, sub_algorithm, sub_state; logging_context_prefix)
-    state.iterate = sub_state.iterate
+    AI.solve!(subproblem, subalgorithm, substate; logging_context_prefix)
+
+    # Update the state with the substate.
+    set_substate!(problem, algorithm, state, substate)
+
     return state
 end
 

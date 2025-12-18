@@ -8,15 +8,12 @@ operator = path_graph(4)
 regions = [(1, 2), (2, 3), (3, 4)]
 tol = 1.0e-4
 maxdim = 50
-region_kwargs = (;
-    update = (; tol),
-    insert = (; maxdim),
-)
+region_kwargs = (; update = (; tol), insert = (; maxdim))
 state = []
 x1 = dmrg_sweep(operator, state; regions, region_kwargs)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{Any}:
  &quot;region = (1, 2), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 18 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 50,)&quot;
  &quot;region = (2, 3), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 18 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 50,)&quot;
- &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 18 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 50,)&quot;</code></pre><p>Sweep-dependent region kwargs (uniform across regions).</p><pre><code class="language-julia hljs">using Graphs: path_graph
+ &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 18 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 50,)&quot;</code></pre><p>Sweep-dependent region kwargs.</p><pre><code class="language-julia hljs">using Graphs: path_graph
 using TensorNetworkSolvers: dmrg, dmrg_sweep
 operator = path_graph(4)
 regions = [(1, 2), (2, 3), (3, 4)]
@@ -24,10 +21,7 @@ nsweeps = 3
 tols = [1.0e-3, 1.0e-4, 1.0e-5]
 maxdims = [20, 50, 100]
 region_kwargs = map(1:nsweeps) do i
-    return (;
-        update = (; tol = tols[i]),
-        insert = (; maxdim = maxdims[i]),
-    )
+    return (; update = (; tol = tols[i]), insert = (; maxdim = maxdims[i]))
 end
 state = []
 x2 = dmrg(operator, state; nsweeps, regions, region_kwargs)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">9-element Vector{Any}:
@@ -39,29 +33,4 @@ x2 = dmrg(operator, state; nsweeps, regions, region_kwargs)</code></pre><pre cla
  &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 18 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 50,)&quot;
  &quot;region = (1, 2), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 19 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 100,)&quot;
  &quot;region = (2, 3), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 19 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 100,)&quot;
- &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 19 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 100,)&quot;</code></pre><p>Region-dependent kwargs.</p><pre><code class="language-julia hljs">using Graphs: path_graph
-using TensorNetworkSolvers: dmrg, dmrg_sweep
-operator = path_graph(4)
-regions = [(1, 2), (2, 3), (3, 4)]
-nsweeps = 3
-tols = [1.0e-3, 1.0e-4, 1.0e-5]
-maxdims = [20, 50, 100]
-region_kwargs = map(1:nsweeps) do i
-    return function (problem, alg, region_state)
-        return (;
-            update = (; tol = tols[i] / region_state.iteration),
-            insert = (; maxdim = maxdims[i] * region_state.iteration),
-        )
-    end
-end
-state = []
-x3 = dmrg(operator, state; nsweeps, regions, region_kwargs)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">9-element Vector{Any}:
- &quot;region = (1, 2), update_kwargs = (tol = 0.001,), insert_kwargs = (maxdim = 20,)&quot;
- &quot;region = (2, 3), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 18 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 40,)&quot;
- &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 33 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 60,)&quot;
- &quot;region = (1, 2), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 18 bytes ⋯ </span></span>&quot; insert_kwargs = (maxdim = 50,)&quot;
- &quot;region = (2, 3), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 19 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 100,)&quot;
- &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 34 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 150,)&quot;
- &quot;region = (1, 2), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 19 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 100,)&quot;
- &quot;region = (2, 3), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 19 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 200,)&quot;
- &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 34 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 300,)&quot;</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Monday 15 December 2025 17:36">Monday 15 December 2025</span>. Using Julia version 1.12.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ &quot;region = (3, 4), update_kwargs &quot;<span class="sgr93"><span class="sgr1"> ⋯ 19 bytes ⋯ </span></span>&quot;insert_kwargs = (maxdim = 100,)&quot;</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 18 December 2025 04:41">Thursday 18 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

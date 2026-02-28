@@ -1,6 +1,6 @@
 name = "TensorNetworkSolvers"
 uuid = "62d5c68e-057c-4e85-9e57-968d0954630a"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]

@@ -1,7 +1,7 @@
 import AlgorithmsInterface as AI
+import TensorNetworkSolvers.AlgorithmsInterfaceExtensions as AIE
 using Graphs: path_graph
 using TensorNetworkSolvers: EigenProblem, Region, Sweep, Sweeping, dmrg, dmrg_sweep
-import TensorNetworkSolvers.AlgorithmsInterfaceExtensions as AIE
 using Test: @test, @testset
 
 @testset "TensorNetworkSolvers" begin
@@ -160,7 +160,7 @@ using Test: @test, @testset
             :EigenProblem_Sweeping_PreStep => print_dmrg_prestep,
             :EigenProblem_Sweeping_PostStep => print_dmrg_poststep,
             :EigenProblem_Sweeping_Sweep_Start => print_sweep_start,
-            :EigenProblem_Sweeping_Sweep_PostStep => print_sweep_poststep,
+            :EigenProblem_Sweeping_Sweep_PostStep => print_sweep_poststep
         ) do
             x = dmrg(operator, x0; nsweeps, regions, region_kwargs)
             return x

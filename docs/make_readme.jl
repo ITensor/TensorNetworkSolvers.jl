@@ -17,5 +17,5 @@ Literate.markdown(
     joinpath(pkgdir(TensorNetworkSolvers));
     flavor = Literate.CommonMarkFlavor(),
     name = "README",
-    postprocess = ccq_logo,
+    postprocess = ccq_logo
 )

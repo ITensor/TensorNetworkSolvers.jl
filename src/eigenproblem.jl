@@ -1,5 +1,5 @@
-import AlgorithmsInterface as AI
 import .AlgorithmsInterfaceExtensions as AIE
+import AlgorithmsInterface as AI
 
 maybe_fill(value, len::Int) = fill(value, len)
 function maybe_fill(v::AbstractVector, len::Int)
@@ -43,7 +43,7 @@ function select_algorithm(::typeof(dmrg), operator, state; nsweeps, regions, reg
     return Sweeping(nsweeps) do i
         return select_algorithm(
             dmrg_sweep, operator, state;
-            regions, region_kwargs = region_kwargs′[i],
+            regions, region_kwargs = region_kwargs′[i]
         )
     end
 end
@@ -60,7 +60,8 @@ end
 
 function AI.step!(problem::EigenProblem, algorithm::Sweep, state::AI.State; kwargs...)
     iterate = solve_region!!(
-        problem, algorithm.region_algorithms[state.iteration](state.iterate), state.iterate
+        problem, algorithm.region_algorithms[state.iteration](state.iterate),
+        state.iterate
     )
     state.iterate = iterate
     return state
@@ -84,7 +85,8 @@ function solve_region!!(problem::EigenProblem, algorithm::RegionAlgorithm, state
     =#
 
     # Dummy update for demonstration purposes.
-    state′ = "region = $region" *
+    state′ =
+        "region = $region" *
         ", update_kwargs = $(region_kwargs.update)" *
         ", insert_kwargs = $(region_kwargs.insert)"
     state = [state; [state′]]

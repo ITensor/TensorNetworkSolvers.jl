@@ -1,5 +1,5 @@
-import AlgorithmsInterface as AI
 import .AlgorithmsInterfaceExtensions as AIE
+import AlgorithmsInterface as AI
 
 @kwdef struct Sweeping{
         Algorithms <: AbstractVector{<:AI.Algorithm},
